@@ -24,7 +24,7 @@ class GuidelineApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF1E3A8A), // प्रोफेशनल नेवी ब्लू
+        colorSchemeSeed: const Color(0xFF1E3A8A),
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
       ),
       home: const DashboardScreen(),
@@ -158,7 +158,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // फ़िल्टर कार्ड
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -212,7 +211,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ड्रॉपडाउन फ़ील्ड
   Widget buildDropdownField(
     String hint,
     List<String> items,
@@ -240,12 +238,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // आधिकारिक मूल्यांकन रिपोर्ट कार्ड (Official Report View)
   Widget buildValuationReport(Map<String, dynamic> data) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // मुख्य सारांश पट्टी
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -302,7 +298,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           children: [
             Expanded(
-              child: buildRateBox('🌾 कृषि (सिंचित)', '₹ ${data['agri_irrigated']}', 'प्रति हेक्टेयर', Colors.emerald.shade50, Colors.emerald.shade900),
+              child: buildRateBox('🌾 कृषि (सिंचित)', '₹ ${data['agri_irrigated']}', 'प्रति हेक्टेयर', Colors.green.shade50, Colors.green.shade900),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -313,7 +309,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         const SizedBox(height: 12),
 
-        // विवरण
         if (data['details'] != null && data['details'].toString().isNotEmpty)
           Container(
             padding: const EdgeInsets.all(12),
