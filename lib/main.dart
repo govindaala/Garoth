@@ -3,12 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Supabase.initialize(
     url: 'https://dcbtdftgjyokioqcpumv.supabase.co',
     anonKey: 'sb_publishable_u6nxcL145Z-HsaKiOlfjoQ_DCvKJrGO',
   );
-
   runApp(const GuidelineApp());
 }
 
@@ -25,383 +23,273 @@ class GuidelineApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: const Color(0xFF1E3A8A),
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
       ),
-      home: const DashboardScreen(),
+      home: const GuidelineScreen(),
     );
   }
 }
 
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+class GuidelineScreen extends StatefulWidget {
+  const GuidelineScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<GuidelineScreen> createState() => _GuidelineScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  List<String> districts = [];
+class _GuidelineScreenState extends State<GuidelineScreen> {
   List<String> tehsils = [];
-  List<String> villages = [];
+  List<String> subAreas = [];
   List<String> wards = [];
+  List<String> locations = [];
 
-  String? selectedDistrict;
   String? selectedTehsil;
-  String? selectedVillage;
+  String? selectedSubArea;
   String? selectedWard;
+  String? selectedLocation;
 
-  Map<String, dynamic>? selectedRecord;
-  bool isPageLoading = true;
-  String? errorMessage;
+  Map<String, dynamic>? currentData;
+  bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    loadDistricts();
+    loadTehsils();
   }
 
-  // 1. Zila load karein
-  Future<void> loadDistricts() async {
-    setState(() {
-      isPageLoading = true;
-      errorMessage = null;
-    });
-
+  Future<void> loadTehsils() async {
     try {
-      final data = await supabase.from('guidelines').select('district');
-      final unique = data
-          .map((e) => e['district'].toString().trim())
-          .where((e) => e.isNotEmpty && e != '-')
-          .toSet()
-          .toList();
-
-      if (unique.isEmpty) {
-        setState(() {
-          errorMessage = "Database me koi district nahi mila. Kripya check karein ki table me data sahi se save hua hai ya nahi.";
-        });
-      } else {
-        setState(() {
-          districts = unique;
-        });
-      }
+      final res = await supabase.rpc('get_all_tehsils');
+      final list = (res as List).map((e) => e['tehsil'].toString().trim()).toList();
+      setState(() => tehsils = list);
     } catch (e) {
-      setState(() {
-        errorMessage = "Connection Error: ${e.toString()}";
-      });
-    } finally {
-      setState(() {
-        isPageLoading = false;
-      });
+      debugPrint('Tehsil load error: $e');
     }
   }
 
-  // 2. Tehsil load karein
-  Future<void> loadTehsils(String district) async {
+  Future<void> loadSubAreas(String tehsil) async {
     try {
-      final data = await supabase.from('guidelines').select('tehsil').eq('district', district);
-      final unique = data
-          .map((e) => e['tehsil'].toString().trim())
-          .where((e) => e.isNotEmpty && e != '-')
-          .toSet()
-          .toList();
+      final res = await supabase.rpc('get_all_subareas', params: {'t': tehsil});
+      final list = (res as List).map((e) => e['sub_area'].toString().trim()).toList();
       setState(() {
-        tehsils = unique;
-        selectedTehsil = null;
-        villages = [];
-        selectedVillage = null;
+        subAreas = list;
+        selectedSubArea = null;
         wards = [];
         selectedWard = null;
-        selectedRecord = null;
+        locations = [];
+        selectedLocation = null;
+        currentData = null;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      debugPrint('Subarea error: $e');
     }
   }
 
-  // 3. Gaon load karein
-  Future<void> loadVillages(String tehsil) async {
+  Future<void> loadWards(String subArea) async {
     try {
-      final data = await supabase
-          .from('guidelines')
-          .select('village')
-          .eq('district', selectedDistrict!)
-          .eq('tehsil', tehsil);
-      final unique = data
-          .map((e) => e['village'].toString().trim())
-          .where((e) => e.isNotEmpty && e != '-')
-          .toSet()
-          .toList();
+      final res = await supabase.rpc('get_all_wards', params: {
+        't': selectedTehsil!,
+        's': subArea,
+      });
+      final list = (res as List).map((e) => e['ward_halka'].toString().trim()).toList();
       setState(() {
-        villages = unique;
-        selectedVillage = null;
-        wards = [];
+        wards = list;
         selectedWard = null;
-        selectedRecord = null;
+        locations = [];
+        selectedLocation = null;
+        currentData = null;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      debugPrint('Ward error: $e');
     }
   }
 
-  // 4. Ward load karein
-  Future<void> loadWards(String village) async {
+  Future<void> loadLocations(String ward) async {
     try {
-      final data = await supabase
-          .from('guidelines')
-          .select('ward')
-          .eq('district', selectedDistrict!)
-          .eq('tehsil', selectedTehsil!)
-          .eq('village', village);
-      final unique = data
-          .map((e) => e['ward'].toString().trim())
-          .where((e) => e.isNotEmpty && e != '-')
-          .toSet()
-          .toList();
+      final res = await supabase.rpc('get_all_locations', params: {
+        't': selectedTehsil!,
+        's': selectedSubArea!,
+        'w': ward,
+      });
+      final list = (res as List).map((e) => e['location_name'].toString().trim()).toList();
       setState(() {
-        wards = unique;
-        selectedWard = null;
-        selectedRecord = null;
+        locations = list;
+        selectedLocation = null;
+        currentData = null;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      debugPrint('Locations error: $e');
     }
   }
 
-  // 5. Final record fetch karein
-  Future<void> fetchRecord(String ward) async {
+  Future<void> fetchRecord(String location) async {
+    setState(() => isLoading = true);
     final data = await supabase
         .from('guidelines')
         .select()
-        .eq('district', selectedDistrict!)
         .eq('tehsil', selectedTehsil!)
-        .eq('village', selectedVillage!)
-        .eq('ward', ward)
+        .eq('sub_area', selectedSubArea!)
+        .eq('ward_halka', selectedWard!)
+        .eq('location_name', location)
         .limit(1);
 
     if (data.isNotEmpty) {
-      setState(() {
-        selectedRecord = data[0];
-      });
+      setState(() => currentData = data[0]);
     }
+    setState(() => isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'कलेक्टर गाइडलाइन मूल्यांकन',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        centerTitle: true,
+        title: const Text('🏛️ कलेक्टर गाइडलाइन मूल्यांकन', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
         backgroundColor: const Color(0xFF1E3A8A),
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: loadDistricts,
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (isPageLoading)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-
-            if (errorMessage != null)
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.red.shade300),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      errorMessage!,
-                      style: TextStyle(color: Colors.red.shade900, fontSize: 13),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    ElevatedButton(
-                      onPressed: loadDistricts,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade700,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Dobara Koshish Karein (Retry)'),
-                    ),
-                  ],
-                ),
-              ),
-
             Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.grey.shade200),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               color: Colors.white,
+              elevation: 1,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'स्थान का चयन करें (Location Filter)',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-                    ),
+                    const Text('स्थान चुनें (Select Location)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
                     const SizedBox(height: 12),
-                    buildDropdownField('ज़िला', districts, selectedDistrict, (val) {
-                      setState(() => selectedDistrict = val);
-                      if (val != null) loadTehsils(val);
-                    }),
-                    const SizedBox(height: 10),
-                    buildDropdownField('तहसील', tehsils, selectedTehsil, (val) {
+                    buildDropdown('1. तहसील चुनें (सभी 8 तहसीलें)', tehsils, selectedTehsil, (val) {
                       setState(() => selectedTehsil = val);
-                      if (val != null) loadVillages(val);
+                      if (val != null) loadSubAreas(val);
                     }),
                     const SizedBox(height: 10),
-                    buildDropdownField('गाँव / शहर', villages, selectedVillage, (val) {
-                      setState(() => selectedVillage = val);
+                    buildDropdown('2. निकाय / ग्रामीण क्षेत्र', subAreas, selectedSubArea, (val) {
+                      setState(() => selectedSubArea = val);
                       if (val != null) loadWards(val);
                     }),
                     const SizedBox(height: 10),
-                    buildDropdownField('वार्ड / मोहल्ला / कालोनी', wards, selectedWard, (val) {
+                    buildDropdown('3. वार्ड / हल्का नंबर', wards, selectedWard, (val) {
                       setState(() => selectedWard = val);
+                      if (val != null) loadLocations(val);
+                    }),
+                    const SizedBox(height: 10),
+                    buildDropdown('4. मोहल्ला / कॉलोनी / सड़क / गाँव', locations, selectedLocation, (val) {
+                      setState(() => selectedLocation = val);
                       if (val != null) fetchRecord(val);
                     }),
                   ],
                 ),
               ),
             ),
-
-            const SizedBox(height: 20),
-
-            if (selectedRecord != null) buildValuationReport(selectedRecord!),
+            const SizedBox(height: 16),
+            if (isLoading) const CircularProgressIndicator(),
+            if (currentData != null) buildDetailsView(currentData!),
           ],
         ),
       ),
     );
   }
 
-  Widget buildDropdownField(
-    String hint,
-    List<String> items,
-    String? selectedValue,
-    Function(String?) onChanged,
-  ) {
+  Widget buildDropdown(String hint, List<String> items, String? val, Function(String?) onChanged) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
-        color: items.isEmpty ? Colors.grey.shade200 : const Color(0xFFF1F5F9),
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           isExpanded: true,
-          hint: Text(
-            items.isEmpty && hint == 'ज़िला' && isPageLoading ? 'Loading...' : hint,
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-          ),
-          value: selectedValue,
-          items: items.map((item) {
-            return DropdownMenuItem(value: item, child: Text(item, style: const TextStyle(fontSize: 14)));
-          }).toList(),
+          hint: Text(hint, style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+          value: val,
+          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
           onChanged: items.isEmpty ? null : onChanged,
         ),
       ),
     );
   }
 
-  Widget buildValuationReport(Map<String, dynamic> data) {
+  Widget buildDetailsView(Map<String, dynamic> d) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(12)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${data['village']} - ${data['ward']}',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Tehsil: ${data['tehsil']} | Zila: ${data['district']}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade700,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Halka: ${data['halka_no'] ?? '-'}',
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ),
+              Text(d['location_name'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 4),
+              Text('${d['ward_halka']} | ${d['sub_area']} | तहसील: ${d['tehsil']}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
         ),
         const SizedBox(height: 12),
+
+        buildSectionHeader('🏞️ भूखण्ड दरें (Plot Rates)'),
         Row(
           children: [
-            Expanded(child: buildRateBox('🏠 Residential', '₹ ${data['residential_rate']}', 'Per Sq.M', Colors.blue.shade50, Colors.blue.shade900)),
-            const SizedBox(width: 10),
-            Expanded(child: buildRateBox('🏢 Commercial', '₹ ${data['commercial_rate']}', 'Per Sq.M', Colors.amber.shade50, Colors.amber.shade900)),
+            Expanded(child: buildRateCard('आवासीय (Res)', d['plot_residential'], '₹/वर्ग मी.', Colors.blue.shade50, Colors.blue.shade900)),
+            const SizedBox(width: 8),
+            Expanded(child: buildRateCard('व्यावसायिक (Comm)', d['plot_commercial'], '₹/वर्ग मी.', Colors.amber.shade50, Colors.amber.shade900)),
+            const SizedBox(width: 8),
+            Expanded(child: buildRateCard('औद्योगिक (Ind)', d['plot_industrial'], '₹/वर्ग मी.', Colors.purple.shade50, Colors.purple.shade900)),
           ],
         ),
-        const SizedBox(height: 10),
+
+        const SizedBox(height: 12),
+
+        if (d['agri_irrigated'] != '-' || d['agri_unirrigated'] != '-') ...[
+          buildSectionHeader('🌾 कृषि भूमि दरें (Agriculture - प्रति हेक्टेयर)'),
+          Row(
+            children: [
+              Expanded(child: buildRateCard('सिंचित (Irrigated)', d['agri_irrigated'], '₹/हेक्टेयर', Colors.green.shade50, Colors.green.shade900)),
+              const SizedBox(width: 8),
+              Expanded(child: buildRateCard('असिंचित (Unirrigated)', d['agri_unirrigated'], '₹/हेक्टेयर', Colors.orange.shade50, Colors.orange.shade900)),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        buildSectionHeader('🏢 भवन निर्माण दरें (Building Construction - ₹/वर्ग मी.)'),
         Row(
           children: [
-            Expanded(child: buildRateBox('🌾 Agri (Irrigated)', '₹ ${data['agri_irrigated']}', 'Per Hectare', Colors.green.shade50, Colors.green.shade900)),
-            const SizedBox(width: 10),
-            Expanded(child: buildRateBox('🚜 Agri (Unirrigated)', '₹ ${data['agri_unirrigated']}', 'Per Hectare', Colors.orange.shade50, Colors.orange.shade900)),
+            Expanded(child: buildRateCard('RCC मकान', d['rcc_rate'], '₹/वर्ग मी.', Colors.indigo.shade50, Colors.indigo.shade900)),
+            const SizedBox(width: 8),
+            Expanded(child: buildRateCard('दुकान (Shop)', d['shop_rate'], '₹/वर्ग मी.', Colors.teal.shade50, Colors.teal.shade900)),
+            const SizedBox(width: 8),
+            Expanded(child: buildRateCard('ऑफिस (Office)', d['office_rate'], '₹/वर्ग मी.', Colors.cyan.shade50, Colors.cyan.shade900)),
           ],
         ),
       ],
     );
   }
 
-  Widget buildRateBox(String title, String rate, String unit, Color bgColor, Color textColor) {
+  Widget buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0, top: 4.0),
+      child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF334155))),
+    );
+  }
+
+  Widget buildRateCard(String title, dynamic rate, String unit, Color bg, Color txt) {
+    final rateStr = (rate == null || rate.toString().trim() == '-' || rate.toString().trim() == '0') ? '-' : '₹ ${rate.toString()}';
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: textColor.withOpacity(0.15)),
-      ),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: txt.withOpacity(0.15))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor)),
-          const SizedBox(height: 6),
-          Text(rate, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
-          const SizedBox(height: 2),
-          Text(unit, style: TextStyle(fontSize: 10, color: textColor.withOpacity(0.7))),
+          Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: txt)),
+          const SizedBox(height: 4),
+          Text(rateStr, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: txt)),
+          Text(unit, style: TextStyle(fontSize: 9, color: txt.withOpacity(0.7))),
         ],
       ),
     );
