@@ -38,11 +38,13 @@ class GuidelineScreen extends StatefulWidget {
 }
 
 class _GuidelineScreenState extends State<GuidelineScreen> {
+  List<String> districts = [];
   List<String> tehsils = [];
   List<String> subAreas = [];
   List<String> wards = [];
   List<String> locations = [];
 
+  String? selectedDistrict;
   String? selectedTehsil;
   String? selectedSubArea;
   String? selectedWard;
@@ -54,22 +56,48 @@ class _GuidelineScreenState extends State<GuidelineScreen> {
   @override
   void initState() {
     super.initState();
-    loadTehsils();
+    loadDistricts();
   }
 
-  Future<void> loadTehsils() async {
+  // 1. Zila load karein
+  Future<void> loadDistricts() async {
     try {
-      final res = await supabase.rpc('get_all_tehsils');
+      final res = await supabase.rpc('get_districts');
+      final list = (res as List).map((e) => e['district'].toString().trim()).toList();
+      setState(() => districts = list);
+    } catch (e) {
+      debugPrint('District load error: $e');
+    }
+  }
+
+  // 2. Tehsil load karein
+  Future<void> loadTehsils(String district) async {
+    try {
+      final res = await supabase.rpc('get_tehsils', params: {'d': district});
       final list = (res as List).map((e) => e['tehsil'].toString().trim()).toList();
-      setState(() => tehsils = list);
+      setState(() {
+        tehsils = list;
+        selectedTehsil = null;
+        subAreas = [];
+        selectedSubArea = null;
+        wards = [];
+        selectedWard = null;
+        locations = [];
+        selectedLocation = null;
+        currentData = null;
+      });
     } catch (e) {
       debugPrint('Tehsil load error: $e');
     }
   }
 
+  // 3. Sub-Area (Nikay / Gramin) load karein
   Future<void> loadSubAreas(String tehsil) async {
     try {
-      final res = await supabase.rpc('get_all_subareas', params: {'t': tehsil});
+      final res = await supabase.rpc('get_subareas', params: {
+        'd': selectedDistrict!,
+        't': tehsil,
+      });
       final list = (res as List).map((e) => e['sub_area'].toString().trim()).toList();
       setState(() {
         subAreas = list;
@@ -81,13 +109,15 @@ class _GuidelineScreenState extends State<GuidelineScreen> {
         currentData = null;
       });
     } catch (e) {
-      debugPrint('Subarea error: $e');
+      debugPrint('SubArea load error: $e');
     }
   }
 
+  // 4. Ward / Halka load karein
   Future<void> loadWards(String subArea) async {
     try {
-      final res = await supabase.rpc('get_all_wards', params: {
+      final res = await supabase.rpc('get_wards', params: {
+        'd': selectedDistrict!,
         't': selectedTehsil!,
         's': subArea,
       });
@@ -100,13 +130,15 @@ class _GuidelineScreenState extends State<GuidelineScreen> {
         currentData = null;
       });
     } catch (e) {
-      debugPrint('Ward error: $e');
+      debugPrint('Ward load error: $e');
     }
   }
 
+  // 5. Colony / Sadak / Gaon load karein
   Future<void> loadLocations(String ward) async {
     try {
-      final res = await supabase.rpc('get_all_locations', params: {
+      final res = await supabase.rpc('get_locations', params: {
+        'd': selectedDistrict!,
         't': selectedTehsil!,
         's': selectedSubArea!,
         'w': ward,
@@ -118,15 +150,17 @@ class _GuidelineScreenState extends State<GuidelineScreen> {
         currentData = null;
       });
     } catch (e) {
-      debugPrint('Locations error: $e');
+      debugPrint('Locations load error: $e');
     }
   }
 
+  // 6. Record fetch karein
   Future<void> fetchRecord(String location) async {
     setState(() => isLoading = true);
     final data = await supabase
         .from('guidelines')
         .select()
+        .eq('district', selectedDistrict!)
         .eq('tehsil', selectedTehsil!)
         .eq('sub_area', selectedSubArea!)
         .eq('ward_halka', selectedWard!)
@@ -160,24 +194,29 @@ class _GuidelineScreenState extends State<GuidelineScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('स्थान चुनें (Select Location)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                    const Text('स्थान का चयन करें (Location Filter)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
                     const SizedBox(height: 12),
-                    buildDropdown('1. तहसील चुनें (सभी 8 तहसीलें)', tehsils, selectedTehsil, (val) {
+                    buildDropdown('1. ज़िला चुनें (Select District)', districts, selectedDistrict, (val) {
+                      setState(() => selectedDistrict = val);
+                      if (val != null) loadTehsils(val);
+                    }),
+                    const SizedBox(height: 10),
+                    buildDropdown('2. तहसील चुनें (Select Tehsil)', tehsils, selectedTehsil, (val) {
                       setState(() => selectedTehsil = val);
                       if (val != null) loadSubAreas(val);
                     }),
                     const SizedBox(height: 10),
-                    buildDropdown('2. निकाय / ग्रामीण क्षेत्र', subAreas, selectedSubArea, (val) {
+                    buildDropdown('3. निकाय / ग्रामीण क्षेत्र', subAreas, selectedSubArea, (val) {
                       setState(() => selectedSubArea = val);
                       if (val != null) loadWards(val);
                     }),
                     const SizedBox(height: 10),
-                    buildDropdown('3. वार्ड / हल्का नंबर', wards, selectedWard, (val) {
+                    buildDropdown('4. वार्ड / हल्का नंबर', wards, selectedWard, (val) {
                       setState(() => selectedWard = val);
                       if (val != null) loadLocations(val);
                     }),
                     const SizedBox(height: 10),
-                    buildDropdown('4. मोहल्ला / कॉलोनी / सड़क / गाँव', locations, selectedLocation, (val) {
+                    buildDropdown('5. मोहल्ला / कॉलोनी / सड़क / गाँव', locations, selectedLocation, (val) {
                       setState(() => selectedLocation = val);
                       if (val != null) fetchRecord(val);
                     }),
@@ -226,7 +265,9 @@ class _GuidelineScreenState extends State<GuidelineScreen> {
             children: [
               Text(d['location_name'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 4),
-              Text('${d['ward_halka']} | ${d['sub_area']} | तहसील: ${d['tehsil']}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('${d['ward_halka']} | ${d['sub_area']}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 2),
+              Text('तहसील: ${d['tehsil']} | ज़िला: ${d['district'] ?? "मंदसौर"}', style: const TextStyle(color: Colors.blueAccent, fontSize: 12)),
             ],
           ),
         ),
@@ -242,7 +283,6 @@ class _GuidelineScreenState extends State<GuidelineScreen> {
             Expanded(child: buildRateCard('औद्योगिक (Ind)', d['plot_industrial'], '₹/वर्ग मी.', Colors.purple.shade50, Colors.purple.shade900)),
           ],
         ),
-
         const SizedBox(height: 12),
 
         if (d['agri_irrigated'] != '-' || d['agri_unirrigated'] != '-') ...[
