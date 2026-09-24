@@ -26,9 +26,11 @@ jobs:
       - name: Generate Android platform files
         run: |
           cp lib/main.dart main_backup.dart
+          cp pubspec.yaml pubspec_backup.yaml
           flutter create . --platforms=android --org com.app.guideline --project-name garoth
           cp main_backup.dart lib/main.dart
-          rm main_backup.dart
+          cp pubspec_backup.yaml pubspec.yaml
+          rm main_backup.dart pubspec_backup.yaml
 
       - name: Install dependencies
         run: flutter pub get
