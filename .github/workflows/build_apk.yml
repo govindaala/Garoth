@@ -26,7 +26,7 @@ jobs:
       - name: Generate Android platform files
         run: |
           cp lib/main.dart main_backup.dart
-          flutter create . --platforms=android --org com.app.guideline
+          flutter create . --platforms=android --org com.app.guideline --project-name garoth
           cp main_backup.dart lib/main.dart
           rm main_backup.dart
 
