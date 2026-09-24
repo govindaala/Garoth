@@ -3,94 +3,119 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MP Collector Guideline - Admin Panel</title>
+  <title>MP Collector Guideline - District Mega Uploader</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }
-    .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-    h1 { color: #1e3a8a; margin-top: 0; font-size: 22px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    label { font-size: 13px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px; }
-    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
-    textarea { height: 160px; font-family: monospace; font-size: 13px; white-space: pre; }
-    .btn { background: #1e3a8a; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-    .btn:hover { background: #1d4ed8; }
-    .btn-clear { background: #64748b; margin-left: 10px; }
-    .preview-box { margin-top: 25px; overflow-x: auto; max-height: 400px; border: 1px solid #e2e8f0; border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
-    th { background: #f8fafc; color: #334155; position: sticky; top: 0; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-    .badge-success { background: #dcfce7; color: #166534; }
-    .badge-info { background: #e0f2fe; color: #075985; }
-    #status { margin-top: 15px; font-weight: bold; }
+    body { background: #0f172a; margin: 0; padding: 20px; color: #f8fafc; }
+    .container { max-width: 1200px; margin: 0 auto; background: #1e293b; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    h1 { color: #38bdf8; margin-top: 0; font-size: 22px; border-bottom: 1px solid #334155; padding-bottom: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 20px; }
+    label { font-size: 13px; font-weight: bold; color: #94a3b8; display: block; margin-bottom: 6px; }
+    input, select, textarea { width: 100%; padding: 12px; border: 1px solid #475569; border-radius: 8px; font-size: 14px; background: #0f172a; color: #f8fafc; }
+    textarea { height: 350px; font-family: monospace; font-size: 12px; white-space: pre; line-height: 1.5; resize: vertical; }
+    .btn { background: #0284c7; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn:hover { background: #0369a1; }
+    .btn-upload { background: #16a34a; }
+    .btn-upload:hover { background: #15803d; }
+    .btn-clear { background: #475569; margin-left: 10px; }
+    .summary-card { display: flex; gap: 15px; margin-top: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+    .stat-box { background: #0f172a; padding: 12px 20px; border-radius: 8px; border: 1px solid #334155; flex: 1; min-width: 160px; }
+    .stat-num { font-size: 22px; font-weight: bold; color: #38bdf8; }
+    .stat-label { font-size: 12px; color: #94a3b8; }
+    .preview-box { margin-top: 20px; overflow-x: auto; max-height: 350px; border: 1px solid #334155; border-radius: 8px; background: #0f172a; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid #334155; padding: 8px 10px; text-align: left; }
+    th { background: #1e293b; color: #38bdf8; position: sticky; top: 0; }
+    .progress-bar-container { width: 100%; background: #334155; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 15px; display: none; }
+    .progress-bar { width: 0%; height: 100%; background: #22c55e; transition: width 0.1s; }
+    #status { margin-top: 10px; font-weight: bold; font-size: 14px; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>🏛️ एमपी कलेक्टर गाइडलाइन - सुपर एडमिन पैनल</h1>
+  <h1>🏛️ ज़िला मेगा डेटा अपलोडर (Full District Paste System)</h1>
 
-  <!-- 1. स्थान चयन ग्रिड -->
   <div class="grid">
     <div>
-      <label>1. ज़िला (District)</label>
-      <select id="districtSelect" onchange="checkCustomDistrict(this.value)">
+      <label>1. ज़िला चुनें (Select District)</label>
+      <select id="districtSelect" onchange="toggleCustomDistrict(this.value)">
         <option value="मंदसौर">मंदसौर (Mandsaur)</option>
         <option value="आगर मालवा">आगर मालवा (Agar Malwa)</option>
         <option value="रतलाम">रतलाम (Ratlam)</option>
         <option value="उज्जैन">उज्जैन (Ujjain)</option>
         <option value="इंदौर">इंदौर (Indore)</option>
         <option value="शाजापुर">शाजापुर (Shajapur)</option>
-        <option value="CUSTOM">➕ नया ज़िला टाइप करें...</option>
+        <option value="CUSTOM">➕ अन्य ज़िला (Type New District)...</option>
       </select>
-      <input type="text" id="customDistrict" placeholder="नए ज़िले का नाम दर्ज करें" style="display:none; margin-top:5px;">
+      <input type="text" id="customDistrict" placeholder="ज़िले का नाम दर्ज करें" style="display:none; margin-top:8px;">
     </div>
-
     <div>
-      <label>2. तहसील (Tehsil)</label>
-      <input type="text" id="tehsilInput" placeholder="उदा. गरोठ, शामगढ़, मंदसौर">
-    </div>
-
-    <div>
-      <label>3. निकाय / उप-क्षेत्र (Sub-Area)</label>
-      <input type="text" id="subAreaInput" placeholder="उदा. नगर परिषद गरोठ या ग्रामीण">
-    </div>
-
-    <div>
-      <label>4. वार्ड / हल्का नंबर (Ward / Halka)</label>
-      <input type="text" id="wardInput" placeholder="उदा. वार्ड नं. 01 या हल्का नं. 14">
+      <label>सूचना (Auto-Hierarchy Rule)</label>
+      <div style="font-size:12px; color:#94a3b8; background:#0f172a; padding:12px; border-radius:8px; border:1px solid #334155;">
+        Text me jahan bhi <b>Tehsil : X</b>, <b>Sub-Area : Y</b> ya <b>Ward : Z</b> aayega, script use automatically pehchan legi. Aapko seedha poore ziley ka text ek sath paste karna hai.
+      </div>
     </div>
   </div>
 
-  <!-- 2. AI से प्राप्त टेक्स्ट पेस्ट बॉक्स -->
-  <label>5. यहाँ AI से प्राप्त टेक्स्ट/टेबल पेस्ट करें (Paste Raw Text from AI)</label>
-  <textarea id="rawInput" placeholder="उदा.
-1 | BRIJDHAM COLONY | 3500 | 5500 | 3500 | 10500 | 17500 | 16500 | 9800 | 16400 | 1650000 | 1650000
-2 | CHAMBAL CHOURAHA | 4500 | 7000 | 4500 | 11500 | 19000 | 18000 | 10600 | 17600 | 1650000 | 1650000"></textarea>
+  <label>2. पूरे ज़िले का AI Raw Text यहाँ पेस्ट करें (Paste Complete District Dump)</label>
+  <textarea id="rawInput" placeholder="Yahan poore jile ka text ek sath paste karein...
+Udaharan:
+
+Tehsil : गरोठ
+Sub-Area : नगर परिषद गरोठ
+Ward : वार्ड 01
+1 | बोलिया रोड | 3500 | 5500 | 3500 | 10500 | 17500 | 16500 | 9800 | 16400 | 1650000 | 1650000
+2 | चंबल चौराहा | 4500 | 7000 | 4500 | 11500 | 19000 | 18000 | 10600 | 17600 | 1650000 | 1650000
+
+Tehsil : शामगढ़
+Sub-Area : ग्रामीण
+Ward : हल्का 12
+1 | ग्राम बरदिया अमरा | 1200 | 2200 | 1500 | 8500 | 12000 | 11000 | 7500 | 12500 | 850000 | 600000"></textarea>
 
   <div style="margin-top: 15px;">
-    <button class="btn" onclick="parseText()">🔍 डेटा चेक करें (Preview)</button>
+    <button class="btn" onclick="parseFullDistrictText()">🔍 डेटा प्रोसेस करें (Process Data)</button>
     <button class="btn btn-clear" onclick="clearAll()">साफ़ करें (Clear)</button>
-    <button class="btn" id="uploadBtn" style="background:#16a34a; display:none;" onclick="uploadToSupabase()">🚀 Supabase में सेव करें</button>
+    <button class="btn btn-upload" id="uploadBtn" style="display:none; margin-left:10px;" onclick="uploadToSupabase()">🚀 Supabase में बल्क अपलोड करें</button>
   </div>
 
+  <!-- Progress Bar -->
+  <div class="progress-bar-container" id="progressContainer">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
   <div id="status"></div>
 
-  <!-- 3. लाइव प्रीव्यू टेबल -->
+  <!-- Stat Counters -->
+  <div class="summary-card" id="summaryCard" style="display:none;">
+    <div class="stat-box">
+      <div class="stat-num" id="statRows">0</div>
+      <div class="stat-label">कुल रिकॉर्ड्स (Total Rows)</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="statTehsils">0</div>
+      <div class="stat-label">तहसीलें मिलीं (Tehsils)</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="statWards">0</div>
+      <div class="stat-label">वार्ड / हल्के मिले (Wards/Halkas)</div>
+    </div>
+  </div>
+
+  <!-- Preview Table -->
   <div class="preview-box" id="previewContainer" style="display:none;">
     <table>
       <thead>
         <tr>
-          <th>क्र.</th>
-          <th>कॉलोनी / सड़क / गाँव</th>
-          <th>आवासीय भूखण्ड</th>
-          <th>व्यावसायिक भूखण्ड</th>
-          <th>RCC निर्माण</th>
-          <th>दुकान निर्माण</th>
-          <th>कृषि सिंचित (₹/हेक्टेयर)</th>
-          <th>कृषि असिंचित (₹/हेक्टेयर)</th>
+          <th>#</th>
+          <th>तहसील</th>
+          <th>निकाय / उप-क्षेत्र</th>
+          <th>वार्ड / हल्का</th>
+          <th>कॉलोनी / गाँव</th>
+          <th>आवासीय दर</th>
+          <th>व्यावसायिक दर</th>
+          <th>RCC दर</th>
+          <th>सिंचित दर</th>
         </tr>
       </thead>
       <tbody id="previewBody"></tbody>
@@ -99,14 +124,13 @@
 </div>
 
 <script>
-  // Supabase कनेक्शन
   const SUPABASE_URL = "https://dcbtdftgjyokioqcpumv.supabase.co";
   const SUPABASE_KEY = "sb_publishable_u6nxcL145Z-HsaKiOlfjoQ_DCvKJrGO";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let parsedRecords = [];
 
-  function checkCustomDistrict(val) {
+  function toggleCustomDistrict(val) {
     document.getElementById('customDistrict').style.display = (val === 'CUSTOM') ? 'block' : 'none';
   }
 
@@ -118,46 +142,75 @@
     return sel;
   }
 
-  // स्मार्ट पार्सर: AI टेक्स्ट से कॉलम अलग करना
-  function parseText() {
+  function cleanStr(s) {
+    return (s || '').replace(/[\r\n\t]+/g, ' ').trim();
+  }
+
+  // Full District Line-By-Line Parser
+  function parseFullDistrictText() {
     const raw = document.getElementById('rawInput').value.trim();
-    const tehsil = document.getElementById('tehsilInput').value.trim() || "सामान्य";
-    const subArea = document.getElementById('subAreaInput').value.trim() || "सामान्य";
-    const ward = document.getElementById('wardInput').value.trim() || "वार्ड 01";
     const district = getActiveDistrict();
 
     if (!raw) {
-      alert("कृपया पहले AI से प्राप्त डेटा पेस्ट करें!");
+      alert("Pehle text paste karein!");
       return;
     }
 
     const lines = raw.split('\n');
     parsedRecords = [];
-    const tbody = document.getElementById('previewBody');
-    tbody.innerHTML = '';
+    
+    let curTehsil = "सामान्य";
+    let curSubArea = "सामान्य";
+    let curWard = "वार्ड 01";
+
+    const tehsilsFound = new Set();
+    const wardsFound = new Set();
 
     lines.forEach((line) => {
       let l = line.trim();
       if (!l || l.includes('Plot Value') || l.includes('Residential') || l.includes('क्र.')) return;
 
-      // टोकन अलग करें (पाइप |, टैब \t या कॉमा से)
-      let parts = [];
-      if (l.includes('|')) {
-        parts = l.split('|').map(p => p.trim());
-      } else if (l.includes('\t')) {
-        parts = l.split('\t').map(p => p.trim());
-      } else {
-        parts = l.split(/\s{2,}/).map(p => p.trim());
+      // 1. Check Tehsil header change
+      const tMatch = l.match(/(?:Tehsil|तहसील|तह\.)\s*[:\-]?\s*([^,\n|]+)/i);
+      if (tMatch) {
+        curTehsil = cleanStr(tMatch[1]);
+        tehsilsFound.add(curTehsil);
+        return;
       }
 
-      // पहला सेल अगर सीरियल नंबर हो तो हटाएँ
+      // 2. Check Sub-Area header change
+      const sMatch = l.match(/(?:Sub-Area|उप\s*पंजीयक|उप\s*क्षेत्र|निकाय)\s*[:\-]?\s*([^,\n|]+)/i);
+      if (sMatch) {
+        curSubArea = cleanStr(sMatch[1]);
+        return;
+      }
+
+      // 3. Check Ward/Halka header change
+      const wMatch = l.match(/(?:Ward|वार्ड|हल्का|पटवारी\s*हल्का)\s*[:\-]?\s*([^,\n\r|]+)/i);
+      if (wMatch) {
+        curWard = cleanStr(wMatch[1]);
+        wardsFound.add(curWard);
+        return;
+      }
+
+      // 4. Tokenize Data Row (Pipe |, Tab \t, or multi-space)
+      let parts = [];
+      if (l.includes('|')) {
+        parts = l.split('|').map(p => cleanStr(p));
+      } else if (l.includes('\t')) {
+        parts = l.split('\t').map(p => cleanStr(p));
+      } else {
+        parts = l.split(/\s{2,}/).map(p => cleanStr(p));
+      }
+
+      // Pehla column serial number ho to skip karein
       let locIndex = 0;
       if (/^\d+$/.test(parts[0])) locIndex = 1;
 
       const locName = parts[locIndex] || "";
       if (!locName || locName.length < 2) return;
 
-      // शेष संख्याओं को इकट्ठा करें
+      // Numbers parse karein
       const nums = [];
       for (let i = locIndex + 1; i < parts.length; i++) {
         const cleaned = parts[i].replace(/[₹,]/g, '').trim();
@@ -165,13 +218,12 @@
         nums.push(m ? m[0] : "-");
       }
 
-      // 18-कॉलम संरचना मैपिंग
-      const record = {
+      parsedRecords.push({
         district: district,
-        tehsil: tehsil,
-        sub_area: subArea,
-        ward_halka: ward,
-        village: subArea,
+        tehsil: curTehsil,
+        sub_area: curSubArea,
+        ward_halka: curWard,
+        village: curSubArea,
         ward: locName.substring(0, 90),
         location_name: locName.substring(0, 90),
         plot_residential: nums[0] || "-",
@@ -184,59 +236,84 @@
         multi_comm: nums[7] || "-",
         agri_irrigated: nums[8] || "-",
         agri_unirrigated: nums[9] || "-"
-      };
+      });
+    });
 
-      parsedRecords.push(record);
+    if (parsedRecords.length === 0) {
+      alert("Koi valid records detect nahi hue. Format check karein!");
+      return;
+    }
 
-      // प्रीव्यू टेबल रो
+    // Stats Update
+    document.getElementById('statRows').innerText = parsedRecords.length;
+    document.getElementById('statTehsils').innerText = tehsilsFound.size || 1;
+    document.getElementById('statWards').innerText = wardsFound.size || 1;
+    document.getElementById('summaryCard').style.display = 'flex';
+
+    // Top 50 rows preview
+    const tbody = document.getElementById('previewBody');
+    tbody.innerHTML = '';
+    const previewList = parsedRecords.slice(0, 50);
+
+    previewList.forEach((r, idx) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${parsedRecords.length}</td>
-        <td><b>${record.location_name}</b></td>
-        <td>₹ ${record.plot_residential}</td>
-        <td>₹ ${record.plot_commercial}</td>
-        <td>₹ ${record.rcc_rate}</td>
-        <td>₹ ${record.shop_rate}</td>
-        <td style="color:#166534; font-weight:bold;">₹ ${record.agri_irrigated}</td>
-        <td style="color:#b45309; font-weight:bold;">₹ ${record.agri_unirrigated}</td>
+        <td>${idx + 1}</td>
+        <td style="color:#38bdf8;">${r.tehsil}</td>
+        <td>${r.sub_area}</td>
+        <td>${r.ward_halka}</td>
+        <td><b>${r.location_name}</b></td>
+        <td>₹ ${r.plot_residential}</td>
+        <td>₹ ${r.plot_commercial}</td>
+        <td>₹ ${r.rcc_rate}</td>
+        <td style="color:#22c55e;">₹ ${r.agri_irrigated}</td>
       `;
       tbody.appendChild(tr);
     });
 
-    if (parsedRecords.length > 0) {
-      document.getElementById('previewContainer').style.display = 'block';
-      document.getElementById('uploadBtn').style.display = 'inline-block';
-      document.getElementById('status').innerHTML = `<span class="badge badge-info">कुल ${parsedRecords.length} कॉलोनियों/गाँवों का डेटा तैयार है। नीचे प्रीव्यू जाँचें।</span>`;
-    } else {
-      alert("डेटा सही से पार्स नहीं हो पाया। कृपया फ़ॉर्मेट जाँचें।");
-    }
+    document.getElementById('previewContainer').style.display = 'block';
+    document.getElementById('uploadBtn').style.display = 'inline-block';
+    document.getElementById('status').innerHTML = `<span style="color:#38bdf8;">✅ Total ${parsedRecords.length} records prepare ho chuke hain. Niche check karein.</span>`;
   }
 
-  // Supabase में सीधा बैच अपलोड
+  // Large Chunked Upload to Supabase
   async function uploadToSupabase() {
     if (parsedRecords.length === 0) return;
+
     const btn = document.getElementById('uploadBtn');
     btn.disabled = true;
-    btn.innerText = "अपलोड हो रहा है...";
+    btn.innerText = "Uploading to Database...";
+
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
     const status = document.getElementById('status');
 
+    progressContainer.style.display = 'block';
+
+    const batchSize = 200;
+    const total = parsedRecords.length;
+
     try {
-      const batchSize = 100;
-      for (let i = 0; i < parsedRecords.length; i += batchSize) {
+      for (let i = 0; i < total; i += batchSize) {
         const batch = parsedRecords.slice(i, i + batchSize);
         const { error } = await supabaseClient.from('guidelines').insert(batch);
         if (error) throw error;
-        status.innerHTML = `<span class="badge badge-info">अपलोड हो रहा है: ${Math.min(i + batchSize, parsedRecords.length)} / ${parsedRecords.length} पंक्तियाँ...</span>`;
+
+        const currentDone = Math.min(i + batchSize, total);
+        const pct = Math.round((currentDone / total) * 100);
+        progressBar.style.width = pct + '%';
+        status.innerHTML = `<span style="color:#38bdf8;">Saving records: ${currentDone} / ${total} (${pct}%)...</span>`;
+        await new Promise(r => setTimeout(r, 60));
       }
 
-      status.innerHTML = `<span class="badge badge-success">🎉 बधाई हो! सभी ${parsedRecords.length} रिकॉर्ड्स Supabase में सफलतापूर्वक सेव हो गए!</span>`;
+      status.innerHTML = `<span style="color:#22c55e;">🎉 Mubarak! Pure ziley ke sabhi ${total} records Supabase me safaltapurvak save ho gaye!</span>`;
       btn.style.display = 'none';
       document.getElementById('rawInput').value = '';
     } catch (err) {
-      alert("अपलोड में त्रुटि: " + err.message);
-      status.innerHTML = `<span style="color:red;">Error: ${err.message}</span>`;
+      alert("Upload me error aaya: " + err.message);
+      status.innerHTML = `<span style="color:#ef4444;">Error: ${err.message}</span>`;
       btn.disabled = false;
-      btn.innerText = "पुनः प्रयास करें";
+      btn.innerText = "Dobara Upload Karein";
     }
   }
 
@@ -245,6 +322,8 @@
     document.getElementById('previewBody').innerHTML = '';
     document.getElementById('previewContainer').style.display = 'none';
     document.getElementById('uploadBtn').style.display = 'none';
+    document.getElementById('summaryCard').style.display = 'none';
+    document.getElementById('progressContainer').style.display = 'none';
     document.getElementById('status').innerHTML = '';
   }
 </script>
