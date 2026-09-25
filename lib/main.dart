@@ -19,7 +19,7 @@ class GuidelineApp extends StatelessWidget {
       title: 'MP Collector Guideline',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F4C81)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1E3A8A)),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF1F5F9),
       ),
@@ -50,9 +50,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<String> wards = [];
   List<String> locations = [];
 
-  Map<String, dynamic>? guidelineDetails;
+  Map<String, dynamic>? guidelineData;
   bool isLoading = false;
-  String searchQuery = '';
 
   @override
   void initState() {
@@ -64,19 +63,20 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => isLoading = true);
     try {
       final res = await supabase.from('guidelines').select('district');
-      final uniqueDistricts = (res as List)
+      final unique = (res as List)
           .map((e) => e['district'].toString().trim())
+          .where((e) => e.isNotEmpty && e != 'None')
           .toSet()
           .toList()..sort();
       setState(() {
-        districts = uniqueDistricts;
+        districts = unique;
         if (districts.isNotEmpty) {
           selectedDistrict = districts.contains('मंदसौर') ? 'मंदसौर' : districts.first;
           loadTehsils(selectedDistrict!);
         }
       });
     } catch (e) {
-      debugPrint('Error loading districts: $e');
+      debugPrint('District error: $e');
     } finally {
       setState(() => isLoading = false);
     }
@@ -89,20 +89,19 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedSubArea = null;
       selectedWard = null;
       selectedLocation = null;
-      guidelineDetails = null;
+      guidelineData = null;
+      tehsils = [];
     });
     try {
-      final res = await supabase
-          .from('guidelines')
-          .select('tehsil')
-          .eq('district', district);
-      final uniqueTehsils = (res as List)
+      final res = await supabase.from('guidelines').select('tehsil').eq('district', district);
+      final unique = (res as List)
           .map((e) => e['tehsil'].toString().trim())
+          .where((e) => e.isNotEmpty)
           .toSet()
           .toList()..sort();
-      setState(() => tehsils = uniqueTehsils);
+      setState(() => tehsils = unique);
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint('Tehsil error: $e');
     } finally {
       setState(() => isLoading = false);
     }
@@ -114,7 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedSubArea = null;
       selectedWard = null;
       selectedLocation = null;
-      guidelineDetails = null;
+      guidelineData = null;
+      subAreas = [];
     });
     try {
       final res = await supabase
@@ -124,11 +124,12 @@ class _HomeScreenState extends State<HomeScreen> {
           .eq('tehsil', tehsil);
       final unique = (res as List)
           .map((e) => e['sub_area'].toString().trim())
+          .where((e) => e.isNotEmpty)
           .toSet()
           .toList()..sort();
       setState(() => subAreas = unique);
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint('SubArea error: $e');
     } finally {
       setState(() => isLoading = false);
     }
@@ -139,7 +140,8 @@ class _HomeScreenState extends State<HomeScreen> {
       isLoading = true;
       selectedWard = null;
       selectedLocation = null;
-      guidelineDetails = null;
+      guidelineData = null;
+      wards = [];
     });
     try {
       final res = await supabase
@@ -150,11 +152,12 @@ class _HomeScreenState extends State<HomeScreen> {
           .eq('sub_area', subArea);
       final unique = (res as List)
           .map((e) => e['ward_halka'].toString().trim())
+          .where((e) => e.isNotEmpty)
           .toSet()
           .toList()..sort();
       setState(() => wards = unique);
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint('Ward error: $e');
     } finally {
       setState(() => isLoading = false);
     }
@@ -164,7 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       isLoading = true;
       selectedLocation = null;
-      guidelineDetails = null;
+      guidelineData = null;
+      locations = [];
     });
     try {
       final res = await supabase
@@ -176,17 +180,18 @@ class _HomeScreenState extends State<HomeScreen> {
           .eq('ward_halka', ward);
       final unique = (res as List)
           .map((e) => e['location_name'].toString().trim())
+          .where((e) => e.isNotEmpty)
           .toSet()
           .toList()..sort();
       setState(() => locations = unique);
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint('Location error: $e');
     } finally {
       setState(() => isLoading = false);
     }
   }
 
-  Future<void> fetchGuidelineDetails(String location) async {
+  Future<void> loadRateDetails(String loc) async {
     setState(() => isLoading = true);
     try {
       final res = await supabase
@@ -196,227 +201,206 @@ class _HomeScreenState extends State<HomeScreen> {
           .eq('tehsil', selectedTehsil!)
           .eq('sub_area', selectedSubArea!)
           .eq('ward_halka', selectedWard!)
-          .eq('location_name', location)
+          .eq('location_name', loc)
           .limit(1)
           .maybeSingle();
-      setState(() => guidelineDetails = res);
+      setState(() => guidelineData = res);
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint('Rate error: $e');
     } finally {
       setState(() => isLoading = false);
     }
+  }
+
+  void _openSheet(String title, List<String> items, Function(String) onPick) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        String filter = '';
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final list = items.where((i) => i.toLowerCase().contains(filter.toLowerCase())).toList();
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                children: [
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context))
+                    ],
+                  ),
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'यहाँ खोजें...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                    ),
+                    onChanged: (v) => setSheetState(() => filter = v),
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: list.isEmpty
+                        ? const Center(child: Text('कोई रिकॉर्ड नहीं मिला'))
+                        : ListView.separated(
+                            itemCount: list.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (_, idx) => ListTile(
+                              dense: true,
+                              title: Text(list[idx], style: const TextStyle(fontSize: 14)),
+                              trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                              onTap: () {
+                                Navigator.pop(context);
+                                onPick(list[idx]);
+                              },
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'कलेक्टर गाइडलाइन मूल्यांकन 2026-27',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF0F4C81),
-        elevation: 2,
+        title: const Text('कलेक्टर गाइडलाइन 2026-27', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
+        backgroundColor: const Color(0xFF1E3A8A),
+        centerTitle: true,
       ),
-      body: isLoading && districts.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(12),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDropdownCard(),
-                  if (isLoading)
-                    const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  if (guidelineDetails != null) _buildAll16RatesCard(guidelineDetails!),
+                  const Text('📍 स्थान चुनें', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                  const SizedBox(height: 12),
+                  _tile('1', 'ज़िला', selectedDistrict, () => _openSheet('ज़िला चुनें', districts, (v) { selectedDistrict = v; loadTehsils(v); })),
+                  _tile('2', 'तहसील', selectedTehsil, () => _openSheet('तहसील चुनें', tehsils, (v) { selectedTehsil = v; loadSubAreas(v); }), isEnabled: selectedDistrict != null && tehsils.isNotEmpty),
+                  _tile('3', 'निकाय / उप-क्षेत्र', selectedSubArea, () => _openSheet('निकाय चुनें', subAreas, (v) { selectedSubArea = v; loadWards(v); }), isEnabled: selectedTehsil != null && subAreas.isNotEmpty),
+                  _tile('4', 'वार्ड / हल्का', selectedWard, () => _openSheet('वार्ड/हल्का चुनें', wards, (v) { selectedWard = v; loadLocations(v); }), isEnabled: selectedSubArea != null && wards.isNotEmpty),
+                  _tile('5', 'कॉलोनी / गाँव', selectedLocation, () => _openSheet('कॉलोनी/गाँव चुनें', locations, (v) { selectedLocation = v; loadRateDetails(v); }), isEnabled: selectedWard != null && locations.isNotEmpty),
                 ],
               ),
             ),
-    );
-  }
-
-  Widget _buildDropdownCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '📍 स्थान चयन (Hierarchy Filter)',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF0F4C81)),
-            ),
-            const SizedBox(height: 12),
-            _buildDropdown('1. ज़िला (District)', districts, selectedDistrict, (v) {
-              if (v != null) {
-                selectedDistrict = v;
-                loadTehsils(v);
-              }
-            }),
-            _buildDropdown('2. तहसील (Tehsil)', tehsils, selectedTehsil, (v) {
-              if (v != null) {
-                selectedTehsil = v;
-                loadSubAreas(v);
-              }
-            }),
-            _buildDropdown('3. निकाय / क्षेत्र (Sub Area)', subAreas, selectedSubArea, (v) {
-              if (v != null) {
-                selectedSubArea = v;
-                loadWards(v);
-              }
-            }),
-            _buildDropdown('4. वार्ड / हल्का (Ward/Halka)', wards, selectedWard, (v) {
-              if (v != null) {
-                selectedWard = v;
-                loadLocations(v);
-              }
-            }),
-            _buildDropdown('5. कॉलोनी / सड़क / गाँव', locations, selectedLocation, (v) {
-              if (v != null) {
-                selectedLocation = v;
-                fetchGuidelineDetails(v);
-              }
-            }),
+            if (isLoading) const Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()),
+            if (guidelineData != null) _buildRates(guidelineData!),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDropdown(String label, List<String> items, String? currentVal, Function(String?) onChanged) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: DropdownButtonFormField<String>(
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(fontSize: 13),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          filled: true,
-          fillColor: const Color(0xFFF8FAFC),
-        ),
-        isExpanded: true,
-        value: currentVal,
-        items: items
-            .map((item) => DropdownMenuItem(
-                  value: item,
-                  child: Text(item, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
-                ))
-            .toList(),
-        onChanged: items.isEmpty ? null : onChanged,
-      ),
-    );
-  }
-
-  Widget _buildAll16RatesCard(Map<String, dynamic> item) {
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.only(top: 14),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.location_on, color: Color(0xFF0F4C81), size: 20),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    item['location_name'] ?? '',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4C81)),
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 20),
-
-            _buildCategorySection('1. भूखण्ड दरें (Plot Rates ₹/वर्ग मी.)', [
-              _rateTile('आवासीय भूखण्ड (Residential)', item['plot_residential']),
-              _rateTile('व्यावसायिक भूखण्ड (Commercial)', item['plot_commercial']),
-              _rateTile('औद्योगिक भूखण्ड (Industrial)', item['plot_industrial']),
-            ]),
-
-            _buildCategorySection('2. आवासीय भवन निर्माण (₹/वर्ग मी.)', [
-              _rateTile('RCC भवन निर्माण', item['rcc_residential']),
-              _rateTile('पक्का भवन निर्माण', item['pucca_residential']),
-              _rateTile('अर्ध-पक्का निर्माण', item['semi_pucca_residential']),
-              _rateTile('कच्चा / टीन शेड', item['kachha_residential']),
-            ]),
-
-            _buildCategorySection('3. व्यावसायिक निर्माण / दुकान (₹/वर्ग मी.)', [
-              _rateTile('दुकान निर्माण (RCC)', item['shop_rcc']),
-              _rateTile('दुकान निर्माण (पक्का)', item['shop_pucca']),
-              _rateTile('दुकान निर्माण (अर्ध-पक्का)', item['shop_semi_pucca']),
-            ]),
-
-            _buildCategorySection('4. बहुमंजिला परिसर (Multi-Storey ₹/वर्ग मी.)', [
-              _rateTile('मल्टी आवासीय फ्लैट', item['multi_residential']),
-              _rateTile('मल्टी व्यावसायिक परिसर', item['multi_commercial']),
-            ]),
-
-            _buildCategorySection('5. कृषि भूमि दरें (₹/हेक्टेयर)', [
-              _rateTile('🌾 सिंचित कृषि भूमि', '₹ ${item['agri_irrigated']}', isBold: true, color: Colors.green[800]),
-              _rateTile('🍂 असिंचित कृषि भूमि', '₹ ${item['agri_unirrigated']}', isBold: true, color: Colors.orange[800]),
-            ]),
-
-            if ((item['extra_rate_1'] != null && item['extra_rate_1'] != '-') ||
-                (item['extra_rate_2'] != null && item['extra_rate_2'] != '-'))
-              _buildCategorySection('6. विशेष / मुख्य मार्ग दरें (₹/वर्ग मी.)', [
-                _rateTile('सड़क/अतिरिक्त दर 1', item['extra_rate_1']),
-                _rateTile('सड़क/अतिरिक्त दर 2', item['extra_rate_2']),
-              ]),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategorySection(String title, List<Widget> children) {
+  Widget _tile(String step, String label, String? val, VoidCallback onTap, {bool isEnabled = true}) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(color: isEnabled ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
+      child: ListTile(
+        dense: true,
+        leading: CircleAvatar(radius: 12, backgroundColor: isEnabled ? const Color(0xFF1E3A8A) : Colors.grey[400], child: Text(step, style: const TextStyle(fontSize: 11, color: Colors.white))),
+        title: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+        subtitle: Text(val ?? 'चुनें...', style: TextStyle(fontSize: 14, fontWeight: val != null ? FontWeight.bold : FontWeight.normal, color: val != null ? const Color(0xFF0F172A) : Colors.grey)),
+        trailing: Icon(Icons.arrow_drop_down, color: isEnabled ? const Color(0xFF1E3A8A) : Colors.grey),
+        onTap: isEnabled ? onTap : null,
       ),
+    );
+  }
+
+  Widget _buildRates(Map<String, dynamic> d) {
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F4C81))),
-          const SizedBox(height: 6),
-          ...children,
+          Text(d['location_name'] ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+          const Divider(height: 20),
+
+          _box('1. भूखण्ड दरें (Plot Rates ₹/वर्ग मी.)', [
+            _row('आवासीय भूखण्ड', d['plot_residential']),
+            _row('व्यावसायिक भूखण्ड', d['plot_commercial']),
+            _row('औद्योगिक भूखण्ड', d['plot_industrial']),
+          ]),
+
+          _box('2. आवासीय निर्माण (₹/वर्ग मी.)', [
+            _row('RCC निर्माण', d['rcc_residential']),
+            _row('पक्का निर्माण', d['pucca_residential']),
+            _row('अर्ध-पक्का निर्माण', d['semi_pucca_residential']),
+            _row('कच्चा / टीन शेड', d['kachha_residential']),
+          ]),
+
+          _box('3. दुकान / व्यावसायिक (₹/वर्ग मी.)', [
+            _row('दुकान (RCC)', d['shop_rcc']),
+            _row('दुकान (पक्का)', d['shop_pucca']),
+            _row('दुकान (अर्ध-पक्का)', d['shop_semi_pucca']),
+          ]),
+
+          _box('4. बहुमंजिला परिसर (₹/वर्ग मी.)', [
+            _row('मल्टी आवासीय', d['multi_residential']),
+            _row('मल्टी व्यावसायिक', d['multi_commercial']),
+          ]),
+
+          _box('5. कृषि भूमि (₹/हेक्टेयर)', [
+            _row('🌾 सिंचित भूमि', '₹ ${d['agri_irrigated']}', color: Colors.green[700], isBold: true),
+            _row('🍂 असिंचित भूमि', '₹ ${d['agri_unirrigated']}', color: Colors.orange[800], isBold: true),
+          ]),
+
+          if ((d['extra_rate_1'] != null && d['extra_rate_1'] != '-') || (d['extra_rate_2'] != null && d['extra_rate_2'] != '-'))
+            _box('6. विशेष / मार्ग दरें', [
+              _row('मार्ग दर 1', d['extra_rate_1']),
+              _row('मार्ग दर 2', d['extra_rate_2']),
+            ]),
         ],
       ),
     );
   }
 
-  Widget _rateTile(String label, dynamic value, {bool isBold = false, Color? color}) {
-    final displayVal = (value == null || value.toString().trim() == '' || value.toString().trim() == 'None')
-        ? '-'
-        : value.toString();
+  Widget _box(String t, List<Widget> items) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+        const SizedBox(height: 6),
+        ...items,
+      ]),
+    );
+  }
+
+  Widget _row(String l, dynamic v, {bool isBold = false, Color? color}) {
+    final str = (v == null || v == '' || v == 'None') ? '-' : v.toString();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF334155))),
-          Text(
-            displayVal.startsWith('₹') ? displayVal : '₹ $displayVal',
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-              color: color ?? Colors.black87,
-            ),
-          ),
+          Text(l, style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569))),
+          Text(str.startsWith('₹') ? str : '₹ $str', style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.w600, color: color ?? const Color(0xFF0F172A))),
         ],
       ),
     );
