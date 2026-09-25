@@ -23,20 +23,33 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android platform files
+      - name: Generate Android platform files & Add AdMob & Internet Permission
         run: |
           cp lib/main.dart main_backup.dart
           flutter create . --platforms=android --org com.app.guideline --project-name garoth
           cp main_backup.dart lib/main.dart
           rm main_backup.dart
           flutter pub add supabase_flutter:^2.8.0
+          flutter pub add google_mobile_ads:^5.2.0
+          
+          # Python script jo AndroidManifest.xml mein Internet Permission aur AdMob App ID add karegi
           python3 -c "
           with open('android/app/src/main/AndroidManifest.xml', 'r') as f:
               content = f.read()
+          
           if 'android.permission.INTERNET' not in content:
               content = content.replace('<application', '    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application')
-              with open('android/app/src/main/AndroidManifest.xml', 'w') as f:
-                  f.write(content)
+          
+          admob_meta = '''
+              <meta-data
+                  android:name=\"com.google.android.gms.ads.APPLICATION_ID\"
+                  android:value=\"ca-app-pub-1190693135801072~3753816204\"/>
+          '''
+          if 'com.google.android.gms.ads.APPLICATION_ID' not in content:
+              content = content.replace('<application', admob_meta + '\n    <application')
+
+          with open('android/app/src/main/AndroidManifest.xml', 'w') as f:
+              f.write(content)
           "
 
       - name: Install dependencies
