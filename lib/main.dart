@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,13 +63,42 @@ class _HomeScreenState extends State<HomeScreen> {
   // Google AdMob Banner variables
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
-  final String _adUnitId = 'ca-app-pub-1190693135801072/8507449433'; // Aapki Ad Unit ID
+  final String _adUnitId = 'ca-app-pub-1190693135801072/8507449433';
 
   @override
   void initState() {
     super.initState();
     loadDistricts();
     _loadBannerAd();
+    smartTrackAppOpen(); // 👈 Smart background tracking bina app roke chalegi
+  }
+
+  // Smart & Lightweight Tracking Function
+  void smartTrackAppOpen() {
+    Future.microtask(() async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        
+        // 1. Unique Device ID check ya create karein
+        String? deviceId = prefs.getString('device_id');
+        if (deviceId == null) {
+          deviceId = const Uuid().v4();
+          await prefs.setString('device_id', deviceId);
+          await supabase.from('devices').upsert({'device_id': deviceId});
+        }
+
+        // 2. Daily Once-a-Day Check (Din me sirf ek baar entry karega)
+        final today = DateTime.now().toIso8601String().split('T')[0];
+        final lastTrackedDate = prefs.getString('last_tracked_date');
+
+        if (lastTrackedDate != today) {
+          await prefs.setString('last_tracked_date', today);
+          await supabase.from('app_opens').insert({'device_id': deviceId});
+        }
+      } catch (e) {
+        debugPrint('Tracking silent error: $e');
+      }
+    });
   }
 
   void _loadBannerAd() {
