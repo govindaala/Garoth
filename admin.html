@@ -243,7 +243,7 @@
         await db.from('guidelines').delete().eq('district', district);
       }
 
-      const BATCH = 80; // Safe payload size
+      const BATCH = 25; // Safe payload size
       const total = cleanRecords.length;
 
       for (let i = uploadIndex; i < total; i += BATCH) {
@@ -255,7 +255,7 @@
         const pct = Math.round((done / total) * 100);
         pFill.style.width = pct + '%';
         status.innerHTML = `<span style="color:#38bdf8;">सेव हो रहा है: ${done} / ${total} (${pct}%)...</span>`;
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 400));
       }
 
       uploadIndex = 0;
