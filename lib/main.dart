@@ -62,21 +62,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> loadDistricts() async {
     setState(() => isLoading = true);
     try {
-      final res = await supabase.from('guidelines').select('district');
-      final unique = (res as List)
+      final res = await supabase.rpc('get_districts');
+      final list = (res as List)
           .map((e) => e['district'].toString().trim())
-          .where((e) => e.isNotEmpty && e != 'None')
-          .toSet()
-          .toList()..sort();
+          .where((e) => e.isNotEmpty)
+          .toList();
       setState(() {
-        districts = unique;
+        districts = list;
         if (districts.isNotEmpty) {
           selectedDistrict = districts.contains('मंदसौर') ? 'मंदसौर' : districts.first;
           loadTehsils(selectedDistrict!);
         }
       });
     } catch (e) {
-      debugPrint('District error: $e');
+      debugPrint('Districts load error: $e');
     } finally {
       setState(() => isLoading = false);
     }
@@ -93,13 +92,12 @@ class _HomeScreenState extends State<HomeScreen> {
       tehsils = [];
     });
     try {
-      final res = await supabase.from('guidelines').select('tehsil').eq('district', district);
-      final unique = (res as List)
+      final res = await supabase.rpc('get_tehsils', params: {'p_district': district});
+      final list = (res as List)
           .map((e) => e['tehsil'].toString().trim())
           .where((e) => e.isNotEmpty)
-          .toSet()
-          .toList()..sort();
-      setState(() => tehsils = unique);
+          .toList();
+      setState(() => tehsils = list);
     } catch (e) {
       debugPrint('Tehsil error: $e');
     } finally {
@@ -117,17 +115,15 @@ class _HomeScreenState extends State<HomeScreen> {
       subAreas = [];
     });
     try {
-      final res = await supabase
-          .from('guidelines')
-          .select('sub_area')
-          .eq('district', selectedDistrict!)
-          .eq('tehsil', tehsil);
-      final unique = (res as List)
+      final res = await supabase.rpc('get_sub_areas', params: {
+        'p_district': selectedDistrict!,
+        'p_tehsil': tehsil,
+      });
+      final list = (res as List)
           .map((e) => e['sub_area'].toString().trim())
           .where((e) => e.isNotEmpty)
-          .toSet()
-          .toList()..sort();
-      setState(() => subAreas = unique);
+          .toList();
+      setState(() => subAreas = list);
     } catch (e) {
       debugPrint('SubArea error: $e');
     } finally {
@@ -144,18 +140,16 @@ class _HomeScreenState extends State<HomeScreen> {
       wards = [];
     });
     try {
-      final res = await supabase
-          .from('guidelines')
-          .select('ward_halka')
-          .eq('district', selectedDistrict!)
-          .eq('tehsil', selectedTehsil!)
-          .eq('sub_area', subArea);
-      final unique = (res as List)
+      final res = await supabase.rpc('get_wards', params: {
+        'p_district': selectedDistrict!,
+        'p_tehsil': selectedTehsil!,
+        'p_sub_area': subArea,
+      });
+      final list = (res as List)
           .map((e) => e['ward_halka'].toString().trim())
           .where((e) => e.isNotEmpty)
-          .toSet()
-          .toList()..sort();
-      setState(() => wards = unique);
+          .toList();
+      setState(() => wards = list);
     } catch (e) {
       debugPrint('Ward error: $e');
     } finally {
@@ -171,19 +165,17 @@ class _HomeScreenState extends State<HomeScreen> {
       locations = [];
     });
     try {
-      final res = await supabase
-          .from('guidelines')
-          .select('location_name')
-          .eq('district', selectedDistrict!)
-          .eq('tehsil', selectedTehsil!)
-          .eq('sub_area', selectedSubArea!)
-          .eq('ward_halka', ward);
-      final unique = (res as List)
+      final res = await supabase.rpc('get_locations', params: {
+        'p_district': selectedDistrict!,
+        'p_tehsil': selectedTehsil!,
+        'p_sub_area': selectedSubArea!,
+        'p_ward': ward,
+      });
+      final list = (res as List)
           .map((e) => e['location_name'].toString().trim())
           .where((e) => e.isNotEmpty)
-          .toSet()
-          .toList()..sort();
-      setState(() => locations = unique);
+          .toList();
+      setState(() => locations = list);
     } catch (e) {
       debugPrint('Location error: $e');
     } finally {
