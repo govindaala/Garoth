@@ -30,7 +30,7 @@ jobs:
           cp main_backup.dart lib/main.dart
           rm main_backup.dart
           flutter pub add supabase_flutter:^2.8.0
-          flutter pub add google_mobile_ads:^5.1.0
+          flutter pub add google_mobile_ads:5.1.0
           
           # Python script jo AndroidManifest.xml mein Internet Permission aur AdMob App ID add karegi
           python3 -c "
