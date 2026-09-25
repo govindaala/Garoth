@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // AdMob SDK Initialize karein
+  MobileAds.instance.initialize();
+
   await Supabase.initialize(
     url: 'https://dcbtdftgjyokioqcpumv.supabase.co',
     anonKey: 'sb_publishable_u6nxcL145Z-HsaKiOlfjoQ_DCvKJrGO',
@@ -53,10 +58,41 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? guidelineData;
   bool isLoading = false;
 
+  // Google AdMob Banner variables
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
+  final String _adUnitId = 'ca-app-pub-1190693135801072/8507449433'; // Aapki Ad Unit ID
+
   @override
   void initState() {
     super.initState();
     loadDistricts();
+    _loadBannerAd();
+  }
+
+  void _loadBannerAd() {
+    BannerAd(
+      adUnitId: _adUnitId,
+      request: const AdRequest(),
+      size: AdSize.banner,
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          setState(() {
+            _bannerAd = ad as BannerAd;
+            _isAdLoaded = true;
+          });
+        },
+        onAdFailedToLoad: (ad, err) {
+          ad.dispose();
+        },
+      ),
+    ).load();
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
   }
 
   Future<void> loadDistricts() async {
@@ -90,6 +126,9 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedLocation = null;
       guidelineData = null;
       tehsils = [];
+      subAreas = [];
+      wards = [];
+      locations = [];
     });
     try {
       final res = await supabase.rpc('get_tehsils', params: {'p_district': district});
@@ -113,6 +152,8 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedLocation = null;
       guidelineData = null;
       subAreas = [];
+      wards = [];
+      locations = [];
     });
     try {
       final res = await supabase.rpc('get_sub_areas', params: {
@@ -138,6 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedLocation = null;
       guidelineData = null;
       wards = [];
+      locations = [];
     });
     try {
       final res = await supabase.rpc('get_wards', params: {
@@ -303,6 +345,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: _isAdLoaded && _bannerAd != null
+          ? Container(
+              alignment: Alignment.center,
+              width: _bannerAd!.size.width.toDouble(),
+              height: _bannerAd!.size.height.toDouble(),
+              child: AdWidget(ad: _bannerAd!),
+            )
+          : null,
     );
   }
 
