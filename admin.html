@@ -2,258 +2,361 @@
 <html lang="hi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MP Collector Guideline - Super Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>एमपी कलेक्टर गाइडलाइन - सुपर एडमिन</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body { background: #0b1329; margin: 0; padding: 16px; color: #f8fafc; }
-    .card { max-width: 900px; margin: 0 auto; background: #16203c; padding: 20px; border-radius: 14px; border: 1px solid #2e3e6b; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    h1 { color: #38bdf8; font-size: 19px; margin-top: 0; border-bottom: 1px solid #2e3e6b; padding-bottom: 12px; }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #090d16; margin: 0; padding: 14px; color: #f1f5f9; }
+    .card { max-width: 960px; margin: 0 auto; background: #131c31; padding: 20px; border-radius: 14px; border: 1px solid #233354; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+    h1 { color: #38bdf8; font-size: 19px; margin: 0 0 16px 0; border-bottom: 1px solid #233354; padding-bottom: 12px; }
     label { font-size: 13px; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 6px; }
-    input, select { width: 100%; padding: 12px; border: 1px solid #3b4d7a; border-radius: 8px; font-size: 14px; background: #0b1329; color: #fff; margin-bottom: 15px; }
-    
-    .upload-btn {
-      display: block; border: 2px dashed #0284c7; border-radius: 10px; padding: 25px 15px;
-      text-align: center; background: #0b1329; cursor: pointer; margin-bottom: 15px;
+    input[type="text"], select, textarea {
+      width: 100%; padding: 12px; border: 1px solid #33476d; border-radius: 8px;
+      font-size: 14px; background: #090d16; color: #fff; margin-bottom: 14px;
     }
-    .upload-btn:active { background: #1e2e5a; }
-    input[type="file"] { display: none; }
-    
-    .stats-row { display: flex; gap: 10px; margin: 15px 0; }
-    .stat-item { background: #0b1329; padding: 12px; border-radius: 8px; border: 1px solid #2e3e6b; flex: 1; text-align: center; }
-    .stat-val { font-size: 20px; font-weight: bold; color: #38bdf8; }
-    .stat-lbl { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    textarea { height: 130px; font-family: monospace; font-size: 12px; white-space: pre; line-height: 1.4; }
+
+    /* Reliable Native File Input Styling (Does not get dropped by Android) */
+    .file-container {
+      background: #090d16; border: 2px dashed #0284c7; border-radius: 10px;
+      padding: 16px; margin-bottom: 16px; text-align: center;
+    }
+    .file-container input[type="file"] {
+      width: 100%; color: #94a3b8; font-size: 13px; margin: 8px 0;
+    }
     
     .btn { background: #0284c7; color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; }
+    .btn:active { opacity: 0.8; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-green { background: #16a34a; margin-top: 10px; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    .progress-bar-bg { width: 100%; background: #2e3e6b; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 14px; display: none; }
-    .progress-bar-fill { width: 0%; height: 100%; background: #22c55e; transition: width 0.15s ease-out; }
-    #msg { margin-top: 12px; font-size: 13px; font-weight: 600; line-height: 1.5; }
+    .btn-green:hover { background: #15803d; }
+    .btn-gray { background: #334155; margin-top: 10px; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin: 15px 0; }
+    .stat-box { background: #090d16; padding: 12px; border-radius: 8px; border: 1px solid #233354; text-align: center; }
+    .stat-num { font-size: 20px; font-weight: bold; color: #38bdf8; }
+    .stat-lbl { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+    .p-bar-bg { width: 100%; background: #233354; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 14px; display: none; }
+    .p-bar-fill { width: 0%; height: 100%; background: #22c55e; transition: width 0.15s ease-out; }
+    #status-box { margin-top: 14px; font-size: 13px; font-weight: 600; line-height: 1.5; }
+
+    .table-wrap { margin-top: 16px; overflow-x: auto; max-height: 240px; border: 1px solid #233354; border-radius: 8px; background: #090d16; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { border: 1px solid #233354; padding: 7px 10px; text-align: left; white-space: nowrap; }
+    th { background: #131c31; color: #38bdf8; position: sticky; top: 0; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h1>🏛️ एमपी कलेक्टर गाइडलाइन (16 दरें Mega Uploader)</h1>
+  <h1>🏛️ एमपी कलेक्टर गाइडलाइन (16 दरें सुपर अपलोडर)</h1>
 
+  <!-- 1. District Selection -->
   <label>1. ज़िला चुनें (Select District)</label>
-  <select id="districtSelect" onchange="checkCustom(this.value)">
+  <select id="districtSelect" onchange="checkCustomDistrict(this.value)">
     <option value="मंदसौर">मंदसौर (Mandsaur)</option>
     <option value="आगर मालवा">आगर मालवा (Agar Malwa)</option>
     <option value="रतलाम">रतलाम (Ratlam)</option>
     <option value="उज्जैन">उज्जैन (Ujjain)</option>
     <option value="इंदौर">इंदौर (Indore)</option>
     <option value="शाजापुर">शाजापुर (Shajapur)</option>
-    <option value="CUSTOM">➕ नया ज़िला दर्ज करें...</option>
+    <option value="नीमच">नीमच (Neemuch)</option>
+    <option value="CUSTOM">➕ अन्य नया ज़िला दर्ज करें...</option>
   </select>
-  <input type="text" id="customDistrict" placeholder="ज़िले का नाम लिखें" style="display:none;">
+  <input type="text" id="customDistrict" placeholder="ज़िले का नाम यहाँ टाइप करें" style="display:none;">
 
-  <label>2. .txt फ़ाइल चुनें (Choose File)</label>
-  <label class="upload-btn" for="txtFile">
-    <div style="font-size: 32px;">📂</div>
-    <div id="fileTxt" style="font-weight: 600; color: #38bdf8; margin-top: 6px;">यहाँ टैप करके .txt फ़ाइल चुनें</div>
-    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">(Mandsaur_2026-27_300_pages_copy_format.txt)</div>
-  </label>
-  <input type="file" id="txtFile" accept=".txt,text/plain,*/*" onchange="readFile(event)">
-
-  <div class="stats-row" id="statsBox" style="display:none;">
-    <div class="stat-item"><div class="stat-val" id="cntRows">0</div><div class="stat-lbl">कुल रिकॉर्ड्स</div></div>
-    <div class="stat-item"><div class="stat-val" id="cntTehsils">0</div><div class="stat-lbl">तहसीलें</div></div>
-    <div class="stat-item"><div class="stat-val" id="cntWards">0</div><div class="stat-lbl">वार्ड / हल्के</div></div>
+  <!-- 2. Bulletproof Native File Input -->
+  <label>2. तरीका अ: .txt फ़ाइल चुनें (Choose .txt File)</label>
+  <div class="file-container">
+    <div style="font-size: 12px; color: #38bdf8; font-weight: bold; margin-bottom: 6px;">📂 300+ पन्नों की .txt फ़ाइल यहाँ सेलेक्ट करें:</div>
+    <input type="file" id="fileSelector" accept=".txt,text/plain" onchange="handleFile(event)">
+    <div style="font-size: 11px; color: #64748b;">(फ़ाइल सेलेक्ट करते ही नीचे रिकॉर्ड्स की गिनती आ जाएगी)</div>
   </div>
 
-  <div class="progress-bar-bg" id="pBarBg"><div class="progress-bar-fill" id="pBarFill"></div></div>
-  <div id="msg"></div>
+  <!-- 3. Direct Paste Backup -->
+  <label>3. तरीका ब: या टेक्स्ट यहाँ सीधा पेस्ट करें (Paste Fallback)</label>
+  <textarea id="pasteInput" placeholder="यदि मोबाइल में फ़ाइल सेलेक्ट करने में दिक्कत हो, तो .txt का टेक्स्ट यहाँ पेस्ट करें..."></textarea>
+  <button class="btn" type="button" onclick="handlePastedText()">🔍 पेस्ट किया गया टेक्स्ट प्रोसेस करें</button>
 
-  <button class="btn btn-green" id="saveBtn" style="display:none;" onclick="uploadData()">
-    🚀 पुराना हटाकर नया 16 दरों का डेटा सेव करें
+  <!-- Statistics Panel -->
+  <div class="stats-row" id="statsRow" style="display:none;">
+    <div class="stat-box"><div class="stat-num" id="sRows">0</div><div class="stat-lbl">कुल रिकॉर्ड्स</div></div>
+    <div class="stat-box"><div class="stat-num" id="sTehsils">0</div><div class="stat-lbl">तहसीलें</div></div>
+    <div class="stat-box"><div class="stat-num" id="sWards">0</div><div class="stat-lbl">वार्ड / हल्के</div></div>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="p-bar-bg" id="progressBg"><div class="p-bar-fill" id="progressFill"></div></div>
+  <div id="status-box"></div>
+
+  <!-- Action Buttons -->
+  <button class="btn btn-green" id="uploadBtn" style="display:none;" onclick="startUpload()">
+    🚀 पुराना डेटा हटाकर नया 16 दरों का डेटा सेव करें
   </button>
+  <button class="btn btn-gray" type="button" onclick="resetForm()">🔄 रीसेट करें (Clear)</button>
+
+  <!-- Data Preview Table -->
+  <div class="table-wrap" id="tableWrap" style="display:none;">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>तहसील</th>
+          <th>स्थान का नाम</th>
+          <th>प्लॉट आव.</th>
+          <th>प्लॉट व्या.</th>
+          <th>RCC आव.</th>
+          <th>दुकान RCC</th>
+          <th>सिंचित (हे.)</th>
+          <th>असिंचित (हे.)</th>
+        </tr>
+      </thead>
+      <tbody id="previewTbody"></tbody>
+    </table>
+  </div>
 </div>
 
 <script>
   const SUPABASE_URL = "https://dcbtdftgjyokioqcpumv.supabase.co";
   const SUPABASE_KEY = "sb_publishable_u6nxcL145Z-HsaKiOlfjoQ_DCvKJrGO";
   
-  // Safe Client Instance (No naming conflict)
-  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // Isolated Supabase Client instance
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  let rowsToSave = [];
+  let cleanRecords = [];
 
-  function checkCustom(v) {
-    document.getElementById('customDistrict').style.display = (v === 'CUSTOM') ? 'block' : 'none';
+  function checkCustomDistrict(val) {
+    document.getElementById('customDistrict').style.display = (val === 'CUSTOM') ? 'block' : 'none';
   }
 
-  function getDistrict() {
-    const s = document.getElementById('districtSelect').value;
-    return (s === 'CUSTOM') ? (document.getElementById('customDistrict').value.trim() || 'मंदसौर') : s;
+  function getSelectedDistrict() {
+    const sel = document.getElementById('districtSelect').value;
+    if (sel === 'CUSTOM') {
+      return document.getElementById('customDistrict').value.trim() || 'मंदसौर';
+    }
+    return sel;
   }
 
-  function clean(s) {
-    return (s || '').replace(/[\r\n\t]+/g, ' ').trim();
+  function cleanText(str) {
+    return (str || '').replace(/[\r\t]+/g, ' ').trim().normalize('NFC');
   }
 
-  function readFile(e) {
-    const f = e.target.files[0];
-    if (!f) return;
+  // 1. Handle File Reading safely
+  function handleFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-    document.getElementById('fileTxt').innerText = "📄 " + f.name;
-    document.getElementById('msg').innerHTML = "<span style='color:#38bdf8;'>⏳ फ़ाइल पढ़ी जा रही है...</span>";
+    const status = document.getElementById('status-box');
+    status.innerHTML = `<span style="color:#38bdf8;">⏳ फ़ाइल "${file.name}" पढ़ी जा रही है, कृपया रुकें...</span>`;
 
-    const r = new FileReader();
-    r.onload = function(evt) {
-      let t = evt.target.result || "";
-      if (t.charCodeAt(0) === 0xFEFF) t = t.slice(1);
-      parse(t);
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      let raw = e.target.result || "";
+      // Strip UTF-8 BOM if present
+      if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
+      parseContent(raw);
     };
-    r.readAsText(f, "UTF-8");
+    reader.onerror = function() {
+      status.innerHTML = `<span style="color:#ef4444;">❌ फ़ाइल पढ़ने में त्रुटि हुई! कृपया दोबारा चुनें या नीचे पेस्ट करें।</span>`;
+    };
+    reader.readAsText(file, "UTF-8");
   }
 
-  function parse(text) {
-    const dist = getDistrict();
-    const lines = text.split(/\r?\n/);
-    rowsToSave = [];
+  // 2. Handle Pasted Text
+  function handlePastedText() {
+    const raw = document.getElementById('pasteInput').value.trim();
+    if (!raw) {
+      alert("कृपया पहले टेक्स्ट पेस्ट करें!");
+      return;
+    }
+    parseContent(raw);
+  }
 
-    let cTehsil = "सामान्य";
-    let cSub = "सामान्य";
-    let cWard = "वार्ड 01";
+  // 3. Fast Ingestion Parser
+  function parseContent(content) {
+    const district = getSelectedDistrict();
+    const lines = content.split(/\r?\n/);
+    cleanRecords = [];
+
+    let curTehsil = "सामान्य";
+    let curSubArea = "सामान्य";
+    let curWard = "वार्ड 01";
 
     const tehsils = new Set();
     const wards = new Set();
 
     for (let i = 0; i < lines.length; i++) {
-      let l = lines[i].trim();
-      if (!l) continue;
+      let line = lines[i].trim();
+      if (!line) continue;
 
-      if (l.startsWith("Tehsil :") || l.startsWith("तहसील :")) {
-        cTehsil = clean(l.split(":")[1]);
-        tehsils.add(cTehsil);
+      // Header switches
+      if (line.startsWith("Tehsil :") || line.startsWith("तहसील :")) {
+        curTehsil = cleanText(line.split(":")[1]);
+        tehsils.add(curTehsil);
         continue;
       }
-      if (l.startsWith("Sub-Area :") || l.startsWith("उप-क्षेत्र :") || l.startsWith("निकाय :")) {
-        cSub = clean(l.split(":")[1]);
+      if (line.startsWith("Sub-Area :") || line.startsWith("उप-क्षेत्र :") || line.startsWith("निकाय :")) {
+        curSubArea = cleanText(line.split(":")[1]);
         continue;
       }
-      if (l.startsWith("Ward :") || l.startsWith("वार्ड :") || l.startsWith("Patwari Halka :") || l.startsWith("पटवारी हल्का :")) {
-        cWard = clean(l.split(":")[1]);
-        wards.add(cWard);
+      if (line.startsWith("Ward :") || line.startsWith("वार्ड :") || line.startsWith("Patwari Halka :") || line.startsWith("पटवारी हल्का :")) {
+        curWard = cleanText(line.split(":")[1]);
+        wards.add(curWard);
         continue;
       }
 
-      if (l.includes('|')) {
-        const p = l.split('|').map(x => clean(x));
-        if (p.length >= 5 && /^\d+$/.test(p[0])) {
-          let loc = p[1] || ("वार्ड का शेष भाग (" + p[0] + ")");
-          const n = [];
-          for (let j = 2; j < p.length; j++) {
-            let v = p[j].replace(/[₹,]/g, '').trim();
-            n.push(v && v !== "None" ? v : "-");
+      // Pipe delimited rate lines
+      if (line.includes('|')) {
+        const parts = line.split('|').map(p => cleanText(p));
+        if (parts.length >= 5 && /^\d+$/.test(parts[0])) {
+          let locName = parts[1] || ("वार्ड का शेष भाग (" + parts[0] + ")");
+
+          const nums = [];
+          for (let j = 2; j < parts.length; j++) {
+            let val = parts[j].replace(/[₹,]/g, '').trim();
+            nums.push(val && val !== "None" ? val : "-");
           }
 
-          rowsToSave.push({
-            district: dist,
-            tehsil: cTehsil,
-            sub_area: cSub,
-            ward_halka: cWard,
-            village: cSub,
-            ward: loc.substring(0, 90),
-            location_name: loc.substring(0, 90),
-            plot_residential: n[0] || "-",
-            plot_commercial: n[1] || "-",
-            plot_industrial: n[2] || "-",
-            rcc_residential: n[3] || "-",
-            pucca_residential: n[4] || "-",
-            semi_pucca_residential: n[5] || "-",
-            kachha_residential: n[6] || "-",
-            shop_rcc: n[7] || "-",
-            shop_pucca: n[8] || "-",
-            shop_semi_pucca: n[9] || "-",
-            multi_residential: n[10] || "-",
-            multi_commercial: n[11] || "-",
-            agri_irrigated: n[12] || "-",
-            agri_unirrigated: n[13] || "-",
-            extra_rate_1: n[14] || "-",
-            extra_rate_2: n[15] || "-"
+          cleanRecords.push({
+            district: district,
+            tehsil: curTehsil,
+            sub_area: curSubArea,
+            ward_halka: curWard,
+            village: curSubArea,
+            ward: locName.substring(0, 90),
+            location_name: locName.substring(0, 90),
+            plot_residential: nums[0] || "-",
+            plot_commercial: nums[1] || "-",
+            plot_industrial: nums[2] || "-",
+            rcc_residential: nums[3] || "-",
+            pucca_residential: nums[4] || "-",
+            semi_pucca_residential: nums[5] || "-",
+            kachha_residential: nums[6] || "-",
+            shop_rcc: nums[7] || "-",
+            shop_pucca: nums[8] || "-",
+            shop_semi_pucca: nums[9] || "-",
+            multi_residential: nums[10] || "-",
+            multi_commercial: nums[11] || "-",
+            agri_irrigated: nums[12] || "-",
+            agri_unirrigated: nums[13] || "-",
+            extra_rate_1: nums[14] || "-",
+            extra_rate_2: nums[15] || "-"
           });
         }
       }
     }
 
-    if (rowsToSave.length === 0) {
-      document.getElementById('msg').innerHTML = "<span style='color:#ef4444;'>❌ फ़ाइल में कोई रिकॉर्ड नहीं मिला।</span>";
+    if (cleanRecords.length === 0) {
+      document.getElementById('status-box').innerHTML = `<span style="color:#ef4444;">❌ कोई डेटा पंक्ति नहीं मिली! कृपया टेक्स्ट फ़ॉर्मेट जाँचें।</span>`;
       return;
     }
 
-    document.getElementById('cntRows').innerText = rowsToSave.length;
-    document.getElementById('cntTehsils').innerText = tehsils.size;
-    document.getElementById('cntWards').innerText = wards.size;
-    document.getElementById('statsBox').style.display = 'flex';
-    document.getElementById('saveBtn').style.display = 'block';
-    document.getElementById('msg').innerHTML = `<span style='color:#22c55e;'>✅ ${rowsToSave.length} रिकॉर्ड्स तैयार हैं! अब नीचे हरा बटन दबाएँ।</span>`;
+    // Update statistics
+    document.getElementById('sRows').innerText = cleanRecords.length;
+    document.getElementById('sTehsils').innerText = tehsils.size;
+    document.getElementById('sWards').innerText = wards.size;
+    document.getElementById('statsRow').style.display = 'grid';
+    document.getElementById('uploadBtn').style.display = 'block';
+
+    // Render Preview Table (Top 15 rows)
+    const tbody = document.getElementById('previewTbody');
+    tbody.innerHTML = '';
+    cleanRecords.slice(0, 15).forEach((r, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${idx + 1}</td>
+        <td style="color:#38bdf8;">${r.tehsil}</td>
+        <td><b>${r.location_name}</b></td>
+        <td>₹ ${r.plot_residential}</td>
+        <td>₹ ${r.plot_commercial}</td>
+        <td>₹ ${r.rcc_residential}</td>
+        <td>₹ ${r.shop_rcc}</td>
+        <td style="color:#22c55e;">₹ ${r.agri_irrigated}</td>
+        <td style="color:#f59e0b;">₹ ${r.agri_unirrigated}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('tableWrap').style.display = 'block';
+    document.getElementById('status-box').innerHTML = `
+      <span style="color:#22c55e;">✅ सफलता: कुल ${cleanRecords.length} रिकॉर्ड्स तैयार हैं। तहसीलें मिलीं: ${Array.from(tehsils).join(', ')}। नीचे हरा बटन दबाएँ।</span>
+    `;
   }
 
-  // Safe Insertion with 3x Auto-Retry
-  async function safeBatchInsert(chunk, maxRetries = 3) {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  // 4. Safe Batch Insert with Exponential Retry
+  async function insertBatchWithRetry(chunk, maxAttempts = 3) {
+    for (let i = 1; i <= maxAttempts; i++) {
       try {
-        const { error } = await client.from('guidelines').insert(chunk);
+        const { error } = await db.from('guidelines').insert(chunk);
         if (error) throw error;
         return; // Success
       } catch (err) {
-        if (attempt === maxRetries) throw err;
-        // Wait 1 second before retrying
-        await new Promise(r => setTimeout(r, 1000));
+        if (i === maxAttempts) throw err;
+        // Wait 1.2 seconds before retrying
+        await new Promise(res => setTimeout(res, 1200));
       }
     }
   }
 
-  async function uploadData() {
-    if (rowsToSave.length === 0) return;
-    const dist = getDistrict();
-    const btn = document.getElementById('saveBtn');
+  // 5. Execution Routine
+  async function startUpload() {
+    if (cleanRecords.length === 0) return;
+
+    const district = getSelectedDistrict();
+    const btn = document.getElementById('uploadBtn');
+    const pBg = document.getElementById('progressBg');
+    const pFill = document.getElementById('progressFill');
+    const status = document.getElementById('status-box');
+
     btn.disabled = true;
     btn.innerText = "डेटा सेव हो रहा है...";
-
-    const pBg = document.getElementById('pBarBg');
-    const pFill = document.getElementById('pBarFill');
-    const msg = document.getElementById('msg');
     pBg.style.display = 'block';
 
     try {
-      msg.innerHTML = `<span style="color:#f59e0b;">⏳ ज़िला "${dist}" का पुराना डेटा साफ़ किया जा रहा है...</span>`;
-      
-      // Delete old district data safely
-      await client.from('guidelines').delete().eq('district', dist);
+      status.innerHTML = `<span style="color:#f59e0b;">⏳ ज़िला "${district}" का पुराना डेटा साफ़ किया जा रहा है...</span>`;
 
-      // Optimized 150 rows batch (Only ~18 requests instead of 56)
-      const BATCH = 150;
-      const total = rowsToSave.length;
+      // Clean old district data
+      await db.from('guidelines').delete().eq('district', district);
+
+      // Safe batch size of 100 rows
+      const BATCH = 100;
+      const total = cleanRecords.length;
 
       for (let i = 0; i < total; i += BATCH) {
-        const chunk = rowsToSave.slice(i, i + BATCH);
-        
-        // Upload with auto-retry
-        await safeBatchInsert(chunk);
+        const chunk = cleanRecords.slice(i, i + BATCH);
+        await insertBatchWithRetry(chunk);
 
         const done = Math.min(i + BATCH, total);
         const pct = Math.round((done / total) * 100);
         pFill.style.width = pct + '%';
-        msg.innerHTML = `<span style="color:#38bdf8;">सेव हो रहा है: ${done} / ${total} (${pct}%)...</span>`;
-        
-        // 150ms gentle delay to keep mobile radio alive
-        await new Promise(r => setTimeout(r, 150));
+        status.innerHTML = `<span style="color:#38bdf8;">सेव हो रहा है: ${done} / ${total} (${pct}%)...</span>`;
+
+        // 150ms gentle pause to prevent socket exhaustion on 4G
+        await new Promise(res => setTimeout(res, 150));
       }
 
-      msg.innerHTML = `<span style="color:#22c55e; font-size:15px;">🎉 बधाई हो! ज़िला "${dist}" के सभी ${total} रिकॉर्ड्स Supabase में बिना किसी रुकावट के सेव हो चुके हैं!</span>`;
+      status.innerHTML = `<span style="color:#22c55e; font-size:15px;">🎉 बधाई हो! ज़िला "${district}" के सभी ${total} रिकॉर्ड्स Supabase में सफलतापूर्वक सुरक्षित हो गए!</span>`;
       btn.style.display = 'none';
 
     } catch (err) {
-      msg.innerHTML = `<span style="color:#ef4444;">❌ नेटवर्क त्रुटि: ${err.message || 'Connection lost'}. कृपया दोबारा प्रयास करें।</span>`;
+      status.innerHTML = `<span style="color:#ef4444;">❌ नेटवर्क त्रुटि: ${err.message || 'Connection lost'}. कृपया दोबारा प्रयास करें।</span>`;
       btn.disabled = false;
       btn.innerText = "पुनः प्रयास करें";
     }
+  }
+
+  function resetForm() {
+    document.getElementById('fileSelector').value = '';
+    document.getElementById('pasteInput').value = '';
+    document.getElementById('previewTbody').innerHTML = '';
+    document.getElementById('tableWrap').style.display = 'none';
+    document.getElementById('statsRow').style.display = 'none';
+    document.getElementById('progressBg').style.display = 'none';
+    document.getElementById('uploadBtn').style.display = 'none';
+    document.getElementById('status-box').innerHTML = '';
+    cleanRecords = [];
   }
 </script>
 </body>
