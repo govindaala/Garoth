@@ -27,17 +27,17 @@
     
     .btn { background: #0284c7; color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; }
     .btn-green { background: #16a34a; margin-top: 10px; }
-    .btn:disabled { opacity: 0.5; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     
     .progress-bar-bg { width: 100%; background: #2e3e6b; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 14px; display: none; }
-    .progress-bar-fill { width: 0%; height: 100%; background: #22c55e; transition: width 0.1s; }
-    #msg { margin-top: 12px; font-size: 13px; font-weight: 600; line-height: 1.4; }
+    .progress-bar-fill { width: 0%; height: 100%; background: #22c55e; transition: width 0.15s ease-out; }
+    #msg { margin-top: 12px; font-size: 13px; font-weight: 600; line-height: 1.5; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h1>🏛️ एमपी कलेक्टर गाइडलाइन (16 दरें अपलोडर)</h1>
+  <h1>🏛️ एमपी कलेक्टर गाइडलाइन (16 दरें Mega Uploader)</h1>
 
   <label>1. ज़िला चुनें (Select District)</label>
   <select id="districtSelect" onchange="checkCustom(this.value)">
@@ -47,9 +47,9 @@
     <option value="उज्जैन">उज्जैन (Ujjain)</option>
     <option value="इंदौर">इंदौर (Indore)</option>
     <option value="शाजापुर">शाजापुर (Shajapur)</option>
-    <option value="CUSTOM">➕ नया ज़िला लिखें...</option>
+    <option value="CUSTOM">➕ नया ज़िला दर्ज करें...</option>
   </select>
-  <input type="text" id="customDistrict" placeholder="ज़िले का नाम दर्ज करें" style="display:none;">
+  <input type="text" id="customDistrict" placeholder="ज़िले का नाम लिखें" style="display:none;">
 
   <label>2. .txt फ़ाइल चुनें (Choose File)</label>
   <label class="upload-btn" for="txtFile">
@@ -61,7 +61,7 @@
 
   <div class="stats-row" id="statsBox" style="display:none;">
     <div class="stat-item"><div class="stat-val" id="cntRows">0</div><div class="stat-lbl">कुल रिकॉर्ड्स</div></div>
-    <div class="stat-item"><div class="stat-val" id="cntTehsils">0</div><div class="stat-lbl">तहसीलें मिलीं</div></div>
+    <div class="stat-item"><div class="stat-val" id="cntTehsils">0</div><div class="stat-lbl">तहसीलें</div></div>
     <div class="stat-item"><div class="stat-val" id="cntWards">0</div><div class="stat-lbl">वार्ड / हल्के</div></div>
   </div>
 
@@ -76,7 +76,9 @@
 <script>
   const SUPABASE_URL = "https://dcbtdftgjyokioqcpumv.supabase.co";
   const SUPABASE_KEY = "sb_publishable_u6nxcL145Z-HsaKiOlfjoQ_DCvKJrGO";
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  
+  // Safe Client Instance (No naming conflict)
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let rowsToSave = [];
 
@@ -180,7 +182,7 @@
     }
 
     if (rowsToSave.length === 0) {
-      document.getElementById('msg').innerHTML = "<span style='color:#ef4444;'>❌ फ़ाइल में कोई रिकॉर्ड नहीं मिला। फ़ॉर्मेट जाँचें।</span>";
+      document.getElementById('msg').innerHTML = "<span style='color:#ef4444;'>❌ फ़ाइल में कोई रिकॉर्ड नहीं मिला।</span>";
       return;
     }
 
@@ -190,6 +192,21 @@
     document.getElementById('statsBox').style.display = 'flex';
     document.getElementById('saveBtn').style.display = 'block';
     document.getElementById('msg').innerHTML = `<span style='color:#22c55e;'>✅ ${rowsToSave.length} रिकॉर्ड्स तैयार हैं! अब नीचे हरा बटन दबाएँ।</span>`;
+  }
+
+  // Safe Insertion with 3x Auto-Retry
+  async function safeBatchInsert(chunk, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const { error } = await client.from('guidelines').insert(chunk);
+        if (error) throw error;
+        return; // Success
+      } catch (err) {
+        if (attempt === maxRetries) throw err;
+        // Wait 1 second before retrying
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
   }
 
   async function uploadData() {
@@ -207,30 +224,33 @@
     try {
       msg.innerHTML = `<span style="color:#f59e0b;">⏳ ज़िला "${dist}" का पुराना डेटा साफ़ किया जा रहा है...</span>`;
       
-      // पुराना डेटा साफ़ करें
-      await supabase.from('guidelines').delete().eq('district', dist);
+      // Delete old district data safely
+      await client.from('guidelines').delete().eq('district', dist);
 
-      // सुरक्षित 50 रिकॉर्ड्स का बैच
-      const BATCH = 50;
+      // Optimized 150 rows batch (Only ~18 requests instead of 56)
+      const BATCH = 150;
       const total = rowsToSave.length;
 
       for (let i = 0; i < total; i += BATCH) {
         const chunk = rowsToSave.slice(i, i + BATCH);
-        const { error } = await supabase.from('guidelines').insert(chunk);
-        if (error) throw error;
+        
+        // Upload with auto-retry
+        await safeBatchInsert(chunk);
 
         const done = Math.min(i + BATCH, total);
         const pct = Math.round((done / total) * 100);
         pFill.style.width = pct + '%';
         msg.innerHTML = `<span style="color:#38bdf8;">सेव हो रहा है: ${done} / ${total} (${pct}%)...</span>`;
-        await new Promise(r => setTimeout(r, 30));
+        
+        // 150ms gentle delay to keep mobile radio alive
+        await new Promise(r => setTimeout(r, 150));
       }
 
       msg.innerHTML = `<span style="color:#22c55e; font-size:15px;">🎉 बधाई हो! ज़िला "${dist}" के सभी ${total} रिकॉर्ड्स Supabase में बिना किसी रुकावट के सेव हो चुके हैं!</span>`;
       btn.style.display = 'none';
 
     } catch (err) {
-      msg.innerHTML = `<span style="color:#ef4444;">❌ अपलोड त्रुटि: ${err.message || JSON.stringify(err)}</span>`;
+      msg.innerHTML = `<span style="color:#ef4444;">❌ नेटवर्क त्रुटि: ${err.message || 'Connection lost'}. कृपया दोबारा प्रयास करें।</span>`;
       btn.disabled = false;
       btn.innerText = "पुनः प्रयास करें";
     }
