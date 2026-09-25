@@ -23,7 +23,7 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android platform files & Add AdMob & Internet Permission
+      - name: Generate Android platform files & Setup App Name, Gradle & AdMob
         run: |
           cp lib/main.dart main_backup.dart
           flutter create . --platforms=android --org com.app.guideline --project-name garoth
@@ -32,14 +32,31 @@ jobs:
           flutter pub add supabase_flutter:^2.8.0
           flutter pub add google_mobile_ads:5.1.0
           
-          # Python script jo AndroidManifest.xml mein Internet Permission aur AdMob App ID add karegi
+          # 1. Gradle version 7.5 set karne ki script
           python3 -c "
-          with open('android/app/src/main/AndroidManifest.xml', 'r') as f:
+          gradle_path = 'android/gradle/wrapper/gradle-wrapper.properties'
+          with open(gradle_path, 'r') as f:
+              content = f.read()
+          content = content.replace('distributionUrl=', '#distributionUrl=') + '\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-7.5-bin.zip\n'
+          with open(gradle_path, 'w') as f:
+              f.write(content)
+          "
+
+          # 2. App Name, Internet Permission aur AdMob App ID set karne ki script
+          python3 -c "
+          manifest_path = 'android/app/src/main/AndroidManifest.xml'
+          with open(manifest_path, 'r') as f:
               content = f.read()
           
+          # 👈 Yahan app ka naam phone ke icon ke niche 'Collector Guideline' set ho jayega
+          content = content.replace('android:label=\"garoth\"', 'android:label=\"Collector Guideline\"')
+          content = content.replace('android:label=\"guideline_app\"', 'android:label=\"Collector Guideline\"')
+
+          # Internet Permission jodein
           if 'android.permission.INTERNET' not in content:
               content = content.replace('<application', '    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application')
           
+          # AdMob App ID jodein
           admob_meta = '''
               <meta-data
                   android:name=\"com.google.android.gms.ads.APPLICATION_ID\"
@@ -48,7 +65,7 @@ jobs:
           if 'com.google.android.gms.ads.APPLICATION_ID' not in content:
               content = content.replace('<application', admob_meta + '\n    <application')
 
-          with open('android/app/src/main/AndroidManifest.xml', 'w') as f:
+          with open(manifest_path, 'w') as f:
               f.write(content)
           "
 
