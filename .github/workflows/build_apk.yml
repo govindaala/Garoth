@@ -23,7 +23,7 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android platform files & Setup App Name, Gradle, Kotlin & AdMob
+      - name: Generate Android platform files & Force Kotlin & Gradle Fix
         run: |
           cp lib/main.dart main_backup.dart
           flutter create . --platforms=android --org com.app.guideline --project-name garoth
@@ -42,7 +42,23 @@ jobs:
               f.write(content)
           "
 
-          # 2. Kotlin version ko aggressive tareeqe se 1.8.22 update karne ki script
+          # 2. Latest Fix: gradle.properties mein Kotlin version ko forcefully 1.8.22 lock karna
+          python3 -c "
+          import os
+          prop_path = 'android/gradle.properties'
+          new_prop = '\nkotlin.version=1.8.22\nandroid.useAndroidX=true\nandroid.enableJetifier=true\n'
+          if os.path.exists(prop_path):
+              with open(prop_path, 'r') as f:
+                  c = f.read()
+              if 'kotlin.version' not in c:
+                  with open(prop_path, 'a') as f:
+                      f.write(new_prop)
+          else:
+              with open(prop_path, 'w') as f:
+                  f.write(new_prop)
+          "
+
+          # 3. Sabhi build.gradle files mein se purana 1.4 version hatane ki script
           python3 -c "
           import os
           for root, dirs, files in os.walk('android'):
@@ -51,29 +67,15 @@ jobs:
                       path = os.path.join(root, file)
                       with open(path, 'r') as f:
                           content = f.read()
-                      # Sabhi purane kotlin versions ko 1.8.22 se replace karein
                       content = content.replace('1.4.', '1.8.')
                       content = content.replace('1.5.', '1.8.')
                       content = content.replace('1.6.', '1.8.')
                       content = content.replace('1.7.', '1.8.')
-                      content = content.replace('ext.kotlin_version', 'kotlin_version')
                       with open(path, 'w') as f:
                           f.write(content)
-          
-          # Root build.gradle mein agar kotlin_version variable na ho toh force add karengay
-          root_gradle = 'android/build.gradle'
-          if os.path.exists(root_gradle):
-              with open(root_gradle, 'r') as f:
-                  code = f.read()
-              if 'kotlin_version' not in code:
-                  code = 'buildscript { ext.kotlin_version = \"1.8.22\" }\n' + code
-              else:
-                  code = code.replace('1.4', '1.8.22').replace('1.5', '1.8.22').replace('1.6', '1.8.22').replace('1.7', '1.8.22')
-              with open(root_gradle, 'w') as f:
-                  f.write(code)
           "
 
-          # 3. App Name, Internet Permission aur AdMob App ID set karne ki script
+          # 4. App Name, Internet Permission aur AdMob App ID set karne ki script
           python3 -c "
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           with open(manifest_path, 'r') as f:
