@@ -23,7 +23,7 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android platform files & Fix Settings Gradle Kotlin Version
+      - name: Generate Android platform files & Global .pub-cache Kotlin Override
         run: |
           cp lib/main.dart main_backup.dart
           flutter create . --platforms=android --org com.app.guideline --project-name garoth
@@ -46,20 +46,28 @@ jobs:
               f.write(content)
           "
 
-          # 2. SETTINGS.GRADLE MEIN KOTLIN PLUGIN VERSION KO 1.8.22 KARNA (Main Fix)
+          # 2. GLOBAL OVERRIDE: Pub-cache aur android dono jagah se Kotlin 1.4 ko mita kar 1.8.22 karna
           python3 -c "
           import os, re
-          settings_path = 'android/settings.gradle'
-          if os.path.exists(settings_path):
-              with open(settings_path, 'r') as f:
-                  c = f.read()
-              # Plugin block ke andar ke purane kotlin version ko 1.8.22 se badal dein
-              c = re.sub(r'id\s*[\"\']org\.jetbrains\.kotlin\.android[\"\']\s*version\s*[\"\'][^\"\']+[\"\']', 'id \"org.jetbrains.kotlin.android\" version \"1.8.22\"', c)
-              c = re.sub(r'version\s*[\"\']1\.[4567]\.[0-9]+[\"\']', 'version \"1.8.22\"', c)
-              c = c.replace('1.4.31', '1.8.22')
-              c = c.replace('1.4', '1.8.22')
-              with open(settings_path, 'w') as f:
-                  f.write(c)
+          paths_to_scan = ['android', '/home/runner/.pub-cache']
+          for base_dir in paths_to_scan:
+              if os.path.exists(base_dir):
+                  for root, dirs, files in os.walk(base_dir):
+                      for file in files:
+                          if file.endswith('.gradle') or file.endswith('.properties'):
+                              path = os.path.join(root, file)
+                              try:
+                                  with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                                      c = f.read()
+                                  if '1.4' in c or 'kotlin' in c:
+                                      c = c.replace('1.4.31', '1.8.22')
+                                      c = c.replace('1.4.20', '1.8.22')
+                                      c = c.replace('1.4', '1.8.22')
+                                      c = re.sub(r'version\s*[\"\']1\.[4567]\.[0-9]+[\"\']', 'version \"1.8.22\"', c)
+                                      with open(path, 'w', encoding='utf-8') as f:
+                                          f.write(c)
+                              except Exception as e:
+                                  pass
           "
 
           # 3. App Name, Internet Permission aur AdMob App ID set karein
