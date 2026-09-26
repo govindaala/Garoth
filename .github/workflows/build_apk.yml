@@ -30,10 +30,10 @@ jobs:
           cp main_backup.dart lib/main.dart
           rm main_backup.dart
 
-      - name: Add required packages
+      - name: Add required packages (Latest Compatible Versions)
         run: |
           flutter pub add supabase_flutter:^2.8.0
-          flutter pub add google_mobile_ads:5.1.0
+          flutter pub add google_mobile_ads
           flutter pub add shared_preferences:^2.3.2
           flutter pub add uuid:^4.5.1
 
