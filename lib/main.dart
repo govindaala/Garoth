@@ -58,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<String> locations = [];
 
   Map<String, dynamic>? guidelineData;
-  bool isLoading = false;
+  bool isLoading = true; // 👈 App start hote hi crash na ho isliye true rakha gaya hai
 
   // Google AdMob Banner variables
   BannerAd? _bannerAd;
@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     loadDistricts();
     _loadBannerAd();
-    smartTrackAppOpen(); // 👈 Smart background tracking bina app roke chalegi
+    smartTrackAppOpen(); // 👈 Smart background tracking
   }
 
   // Smart & Lightweight Tracking Function
@@ -79,7 +79,6 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         final prefs = await SharedPreferences.getInstance();
         
-        // 1. Unique Device ID check ya create karein
         String? deviceId = prefs.getString('device_id');
         if (deviceId == null) {
           deviceId = const Uuid().v4();
@@ -87,7 +86,6 @@ class _HomeScreenState extends State<HomeScreen> {
           await supabase.from('devices').upsert({'device_id': deviceId});
         }
 
-        // 2. Daily Once-a-Day Check (Din me sirf ek baar entry karega)
         final today = DateTime.now().toIso8601String().split('T')[0];
         final lastTrackedDate = prefs.getString('last_tracked_date');
 
@@ -127,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> loadDistricts() async {
-    setState(() => isLoading = true);
+    // 👈 Yahan se setState() hata diya gaya hai taaki mount hone se pehle error na aaye
     try {
       final res = await supabase.rpc('get_districts');
       final list = (res as List)
@@ -136,6 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .toList();
       setState(() {
         districts = list;
+        isLoading = false; // 👈 Data milne ke baad loading false hogi
         if (districts.isNotEmpty) {
           selectedDistrict = districts.contains('मंदसौर') ? 'मंदसौर' : districts.first;
           loadTehsils(selectedDistrict!);
@@ -143,7 +142,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (e) {
       debugPrint('Districts load error: $e');
-    } finally {
       setState(() => isLoading = false);
     }
   }
