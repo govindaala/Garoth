@@ -23,7 +23,7 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android platform files & Fix Kotlin 1.8 & AdMob
+      - name: Generate Android platform files & Bulletproof Kotlin Override
         run: |
           cp lib/main.dart main_backup.dart
           flutter create . --platforms=android --org com.app.guideline --project-name garoth
@@ -46,20 +46,32 @@ jobs:
               f.write(content)
           "
 
-          # 2. Kotlin version ko settings.gradle aur build.gradle me forcefully 1.8.22 karna
+          # 2. BULLETPROOF KOTLIN OVERRIDE STRATEGY (Yeh har purane version ko block kar dega)
           python3 -c "
-          import os, re
-          files = ['android/settings.gradle', 'android/build.gradle', 'android/app/build.gradle']
-          for path in files:
-              if os.path.exists(path):
-                  with open(path, 'r') as f:
-                      c = f.read()
-                  c = re.sub(r'version\s*[\"\']1\.[0-9](\.[0-9]+)?[\"\']', 'version \"1.8.22\"', c)
-                  c = c.replace('1.4.31', '1.8.22')
-                  c = c.replace('1.4', '1.8.22')
-                  c = c.replace('1.6.10', '1.8.22')
-                  with open(path, 'w') as f:
-                      f.write(c)
+          import os
+          build_gradle = 'android/build.gradle'
+          if os.path.exists(build_gradle):
+              with open(build_gradle, 'r') as f:
+                  content = f.read()
+              
+              force_code = '''
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              configurations.all {
+                  resolutionStrategy.eachDependency { details ->
+                      if (details.requested.group == 'org.jetbrains.kotlin') {
+                          details.useVersion '1.8.22'
+                      }
+                  }
+              }
+          }
+          '''
+              content += force_code
+              with open(build_gradle, 'w') as f:
+                  f.write(content)
           "
 
           # 3. App Name, Internet Permission aur AdMob App ID set karein
