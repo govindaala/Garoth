@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -23,67 +23,70 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android platform files & Precise Settings Gradle Kotlin Fix
+      - name: Generate Android platform files
         run: |
           cp lib/main.dart main_backup.dart
-          flutter create . --platforms=android --org com.app.guideline --project-name garoth
+
+          flutter create . \
+            --platforms=android \
+            --org com.app.guideline \
+            --project-name garoth
+
           cp main_backup.dart lib/main.dart
           rm main_backup.dart
-          
-          # Zaroori packages add karein
+
+      - name: Add required packages
+        run: |
           flutter pub add supabase_flutter:^2.8.0
           flutter pub add google_mobile_ads:5.1.0
           flutter pub add shared_preferences:^2.3.2
           flutter pub add uuid:^4.5.1
-          
-          # 1. Gradle version 7.6.3 set karein
-          python3 -c "
-          gradle_path = 'android/gradle/wrapper/gradle-wrapper.properties'
-          with open(gradle_path, 'r') as f:
-              content = f.read()
-          content = content.replace('distributionUrl=', '#distributionUrl=') + '\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-7.6.3-bin.zip\n'
-          with open(gradle_path, 'w' ) as f:
-              f.write(content)
-          "
 
-          # 2. settings.gradle mein org.jetbrains.kotlin.android version ko direct 1.8.22 karna
-          python3 -c "
-          import os
-          settings_path = 'android/settings.gradle'
-          if os.path.exists(settings_path):
-              with open(settings_path, 'r') as f:
-                  c = f.read()
-              c = c.replace('version \"1.4.31\"', 'version \"1.8.22\"')
-              c = c.replace('version \"1.4.20\"', 'version \"1.8.22\"')
-              c = c.replace('version \"1.4\"', 'version \"1.8.22\"')
-              c = c.replace('version \"1.7.10\"', 'version \"1.8.22\"')
-              with open(settings_path, 'w') as f:
-                  f.write(c)
-          "
-
-          # 3. App Name, Internet Permission aur AdMob App ID set karein
-          python3 -c "
+      - name: Configure AndroidManifest
+        run: |
+          python3 <<'PY'
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
+
           with open(manifest_path, 'r') as f:
               content = f.read()
-          
-          content = content.replace('android:label=\"garoth\"', 'android:label=\"Collector Guideline\"')
-          content = content.replace('android:label=\"guideline_app\"', 'android:label=\"Collector Guideline\"')
 
+          # App name
+          content = content.replace(
+              'android:label="garoth"',
+              'android:label="Collector Guideline"'
+          )
+
+          content = content.replace(
+              'android:label="guideline_app"',
+              'android:label="Collector Guideline"'
+          )
+
+          # Internet permission
           if 'android.permission.INTERNET' not in content:
-              content = content.replace('<application', '    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application')
-          
+              content = content.replace(
+                  '<application',
+                  '    <uses-permission android:name="android.permission.INTERNET"/>\n'
+                  '    <application',
+                  1
+              )
+
+          # AdMob App ID
           admob_meta = '''
               <meta-data
-                  android:name=\"com.google.android.gms.ads.APPLICATION_ID\"
-                  android:value=\"ca-app-pub-1190693135801072~3753816204\"/>
+                  android:name="com.google.android.gms.ads.APPLICATION_ID"
+                  android:value="ca-app-pub-1190693135801072~3753816204"/>
           '''
+
           if 'com.google.android.gms.ads.APPLICATION_ID' not in content:
-              content = content.replace('<application', admob_meta + '\n    <application')
+              content = content.replace(
+                  '<application',
+                  admob_meta + '\n    <application',
+                  1
+              )
 
           with open(manifest_path, 'w') as f:
               f.write(content)
-          "
+          PY
 
       - name: Install dependencies
         run: flutter pub get
@@ -94,5 +97,5 @@ jobs:
       - name: Upload arm64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: guideline-app-16MB
+          name: guideline-app-arm64
           path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
