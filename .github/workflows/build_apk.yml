@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -26,12 +26,7 @@ jobs:
       - name: Generate Android platform files
         run: |
           cp lib/main.dart main_backup.dart
-
-          flutter create . \
-            --platforms=android \
-            --org com.app.guideline \
-            --project-name garoth
-
+          flutter create . --platforms=android --org com.app.guideline --project-name garoth
           cp main_backup.dart lib/main.dart
           rm main_backup.dart
 
@@ -42,51 +37,90 @@ jobs:
           flutter pub add shared_preferences:^2.3.2
           flutter pub add uuid:^4.5.1
 
-      - name: Configure AndroidManifest
+      - name: Ultimate Auto-Fix (Block Kotlin 1.4 & Force 1.8, Gradle & AdMob)
         run: |
-          python3 <<'PY'
+          python3 << 'EOF'
+          import os, re
+
+          # 1. Gradle version ko 7.6.3 par lock karna
+          gradle_path = 'android/gradle/wrapper/gradle-wrapper.properties'
+          if os.path.exists(gradle_path):
+              with open(gradle_path, 'r') as f:
+                  content = f.read()
+              content = re.sub(r'distributionUrl=.*', 'distributionUrl=https\\://services.gradle.org/distributions/gradle-7.6.3-bin.zip', content)
+              with open(gradle_path, 'w') as f:
+                  f.write(content)
+
+          # 2. Android folder ki har file ko scan karke purane Kotlin versions ko jad se mitana
+          for root, dirs, files in os.walk('android'):
+              for file in files:
+                  if file.endswith('.gradle') or file.endswith('.gradle.kts') or file.endswith('.properties'):
+                      path = os.path.join(root, file)
+                      try:
+                          with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                              c = f.read()
+                          
+                          # Sabhi purane versions ko block karke 1.8.22 set karna
+                          c = re.sub(r'kotlin_version\s*=\s*[\"\']1\.[0-9](\.[0-9]+)?[\"\']', 'kotlin_version = "1.8.22"', c)
+                          c = re.sub(r'version\s*[\"\']1\.[0-9](\.[0-9]+)?[\"\']', 'version "1.8.22"', c)
+                          c = c.replace('1.4.31', '1.8.22')
+                          c = c.replace('1.4.20', '1.8.22')
+                          c = c.replace('1.4', '1.8.22')
+                          c = c.replace('1.5', '1.8.22')
+                          c = c.replace('1.6', '1.8.22')
+                          c = c.replace('1.7', '1.8.22')
+                          
+                          with open(path, 'w', encoding='utf-8') as f:
+                              f.write(c)
+                      except Exception as e:
+                          pass
+
+          # 3. Compiler Level Override: Agar koi plugin fir bhi 1.4 laaye toh compiler khud 1.8 kar dega
+          build_gradle = 'android/build.gradle'
+          if os.path.exists(build_gradle):
+              with open(build_gradle, 'r') as f:
+                  c = f.read()
+              
+              override_snippet = """
+          subprojects {
+              afterEvaluate { project ->
+                  project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                      kotlinOptions {
+                          languageVersion = "1.8"
+                          apiVersion = "1.8"
+                      }
+                  }
+              }
+          }
+          """
+              if 'KotlinCompile' not in c:
+                  c += override_snippet
+                  with open(build_gradle, 'w') as f:
+                      f.write(c)
+
+          # 4. AndroidManifest mein App Name, Internet Permission aur AdMob ID set karna
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
+          if os.path.exists(manifest_path):
+              with open(manifest_path, 'r') as f:
+                  m_content = f.read()
+              
+              m_content = m_content.replace('android:label="garoth"', 'android:label="Collector Guideline"')
+              m_content = m_content.replace('android:label="guideline_app"', 'android:label="Collector Guideline"')
 
-          with open(manifest_path, 'r') as f:
-              content = f.read()
+              if 'android.permission.INTERNET' not in m_content:
+                  m_content = m_content.replace('<application', '    <uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
+              
+              admob_meta = '''
+                  <meta-data
+                      android:name="com.google.android.gms.ads.APPLICATION_ID"
+                      android:value="ca-app-pub-1190693135801072~3753816204"/>
+              '''
+              if 'com.google.android.gms.ads.APPLICATION_ID' not in m_content:
+                  m_content = m_content.replace('<application', admob_meta + '\n    <application', 1)
 
-          # App name
-          content = content.replace(
-              'android:label="garoth"',
-              'android:label="Collector Guideline"'
-          )
-
-          content = content.replace(
-              'android:label="guideline_app"',
-              'android:label="Collector Guideline"'
-          )
-
-          # Internet permission
-          if 'android.permission.INTERNET' not in content:
-              content = content.replace(
-                  '<application',
-                  '    <uses-permission android:name="android.permission.INTERNET"/>\n'
-                  '    <application',
-                  1
-              )
-
-          # AdMob App ID
-          admob_meta = '''
-              <meta-data
-                  android:name="com.google.android.gms.ads.APPLICATION_ID"
-                  android:value="ca-app-pub-1190693135801072~3753816204"/>
-          '''
-
-          if 'com.google.android.gms.ads.APPLICATION_ID' not in content:
-              content = content.replace(
-                  '<application',
-                  admob_meta + '\n    <application',
-                  1
-              )
-
-          with open(manifest_path, 'w') as f:
-              f.write(content)
-          PY
+              with open(manifest_path, 'w') as f:
+                  f.write(m_content)
+          EOF
 
       - name: Install dependencies
         run: flutter pub get
