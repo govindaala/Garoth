@@ -30,41 +30,42 @@ jobs:
           cp main_backup.dart lib/main.dart
           rm main_backup.dart
 
-      - name: Add required packages (Latest Compatible Versions)
+      - name: Add required packages
         run: |
           flutter pub add supabase_flutter:^2.8.0
           flutter pub add google_mobile_ads
           flutter pub add shared_preferences:^2.3.2
           flutter pub add uuid:^4.5.1
 
-      - name: Configure AndroidManifest (App Name, Internet & AdMob)
+      - name: Configure AndroidManifest Safely (AdMob Inside Application Tag)
         run: |
           python3 << 'EOF'
-          import os
+          import os, re
 
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           if os.path.exists(manifest_path):
-              with open(manifest_path, 'r') as f:
+              with open(manifest_path, 'r', encoding='utf-8') as f:
                   m_content = f.read()
               
               # App Name set karna
               m_content = m_content.replace('android:label="garoth"', 'android:label="Collector Guideline"')
               m_content = m_content.replace('android:label="guideline_app"', 'android:label="Collector Guideline"')
 
-              # Internet permission add karna
+              # Internet permission add karna (<application> ke upar)
               if 'android.permission.INTERNET' not in m_content:
                   m_content = m_content.replace('<application', '    <uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
               
-              # AdMob App ID add karna
+              # AdMob App ID ko <application> ke theek andar (bheetar) dalna
               admob_meta = '''
                   <meta-data
                       android:name="com.google.android.gms.ads.APPLICATION_ID"
                       android:value="ca-app-pub-1190693135801072~3753816204"/>
               '''
               if 'com.google.android.gms.ads.APPLICATION_ID' not in m_content:
-                  m_content = m_content.replace('<application', admob_meta + '\n    <application', 1)
+                  # Yeh regex <application ...> tag ke theek andar meta-data inject karega
+                  m_content = re.sub(r'(<application\b[^>]*>)', r'\1\n' + admob_meta, m_content, count=1)
 
-              with open(manifest_path, 'w') as f:
+              with open(manifest_path, 'w', encoding='utf-8') as f:
                   f.write(m_content)
           EOF
 
