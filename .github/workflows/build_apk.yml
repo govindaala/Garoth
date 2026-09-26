@@ -23,7 +23,7 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android platform files & Force Kotlin & Gradle Fix
+      - name: Generate Android platform files & Ultimate Kotlin & Gradle Fix
         run: |
           cp lib/main.dart main_backup.dart
           flutter create . --platforms=android --org com.app.guideline --project-name garoth
@@ -42,40 +42,30 @@ jobs:
               f.write(content)
           "
 
-          # 2. Latest Fix: gradle.properties mein Kotlin version ko forcefully 1.8.22 lock karna
+          # 2. Ultimate Kotlin Version Force Fix (settings.gradle aur build.gradle ke liye)
           python3 -c "
           import os
-          prop_path = 'android/gradle.properties'
-          new_prop = '\nkotlin.version=1.8.22\nandroid.useAndroidX=true\nandroid.enableJetifier=true\n'
-          if os.path.exists(prop_path):
-              with open(prop_path, 'r') as f:
-                  c = f.read()
-              if 'kotlin.version' not in c:
-                  with open(prop_path, 'a') as f:
-                      f.write(new_prop)
-          else:
-              with open(prop_path, 'w') as f:
-                  f.write(new_prop)
+          files_to_fix = ['android/settings.gradle', 'android/build.gradle', 'android/app/build.gradle']
+          for path in files_to_fix:
+              if os.path.exists(path):
+                  with open(path, 'r') as f:
+                      c = f.read()
+                  # Sabhi purane kotlin versions ko 1.8.22 mein badal dein
+                  c = c.replace('1.4.20', '1.8.22')
+                  c = c.replace('1.4.31', '1.8.22')
+                  c = c.replace('1.7.10', '1.8.22')
+                  c = c.replace('1.7.20', '1.8.22')
+                  c = c.replace('version \"1.4\"', 'version \"1.8.22\"')
+                  c = c.replace('version \"1.7\"', 'version \"1.8.22\"')
+                  # Agar kotlin version string milti hai
+                  if 'kotlin_version' in c or 'org.jetbrains.kotlin.android' in c:
+                      import re
+                      c = re.sub(r'version\s+[\"\'][\d\.]+[\"\']', 'version \"1.8.22\"', c)
+                  with open(path, 'w') as f:
+                      f.write(c)
           "
 
-          # 3. Sabhi build.gradle files mein se purana 1.4 version hatane ki script
-          python3 -c "
-          import os
-          for root, dirs, files in os.walk('android'):
-              for file in files:
-                  if file == 'build.gradle' or file == 'settings.gradle':
-                      path = os.path.join(root, file)
-                      with open(path, 'r') as f:
-                          content = f.read()
-                      content = content.replace('1.4.', '1.8.')
-                      content = content.replace('1.5.', '1.8.')
-                      content = content.replace('1.6.', '1.8.')
-                      content = content.replace('1.7.', '1.8.')
-                      with open(path, 'w') as f:
-                          f.write(content)
-          "
-
-          # 4. App Name, Internet Permission aur AdMob App ID set karne ki script
+          # 3. App Name, Internet Permission aur AdMob App ID set karne ki script
           python3 -c "
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           with open(manifest_path, 'r') as f:
