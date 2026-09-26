@@ -37,7 +37,7 @@ jobs:
           flutter pub add shared_preferences:^2.3.2
           flutter pub add uuid:^4.5.1
 
-      - name: Direct Settings Gradle & Kotlin Fix
+      - name: Absolute Kotlin 1.8.22 Force Injection Fix
         run: |
           python3 << 'EOF'
           import os, re
@@ -51,22 +51,34 @@ jobs:
               with open(gradle_path, 'w') as f:
                   f.write(content)
 
-          # 2. settings.gradle mein likhe 1.4.31 ko seedha 1.8.22 banana
-          settings_file = 'android/settings.gradle'
-          if os.path.exists(settings_file):
-              with open(settings_file, 'r') as f:
-                  s_content = f.read()
-              
-              # Har tarike ke purane version ko replace karna
-              s_content = s_content.replace('1.4.31', '1.8.22')
-              s_content = s_content.replace('1.4.20', '1.8.22')
-              s_content = s_content.replace('1.4', '1.8.22')
-              s_content = s_content.replace('1.7.10', '1.8.22')
-              
-              with open(settings_file, 'w') as f:
-                  f.write(s_content)
+          # 2. gradle.properties mein kotlin.version set karna
+          prop_path = 'android/gradle.properties'
+          prop_content = ""
+          if os.path.exists(prop_path):
+              with open(prop_path, 'r') as f:
+                  prop_content = f.read()
+          if 'kotlin.version' not in prop_content:
+              prop_content += "\nkotlin.version=1.8.22\n"
+          else:
+              prop_content = re.sub(r'kotlin.version=.*', 'kotlin.version=1.8.22', prop_content)
+          with open(prop_path, 'w') as f:
+              f.write(prop_content)
 
-          # 3. Android folder ki baaki sabhi files ko bhi scan karna
+          # 3. android/build.gradle ke sabse upar buildscript block mein ext.kotlin_version dalna
+          build_gradle = 'android/build.gradle'
+          if os.path.exists(build_gradle):
+              with open(build_gradle, 'r') as f:
+                  bg_content = f.read()
+              
+              if 'ext.kotlin_version' not in bg_content:
+                  bg_content = "buildscript {\n    ext.kotlin_version = '1.8.22'\n}\n" + bg_content
+              else:
+                  bg_content = re.sub(r'ext\.kotlin_version\s*=\s*[\"\'][^\"\']+[\"\']', "ext.kotlin_version = '1.8.22'", bg_content)
+              
+              with open(build_gradle, 'w') as f:
+                  f.write(bg_content)
+
+          # 4. Baaki sabhi files mein se purane versions ko hatana
           for root, dirs, files in os.walk('android'):
               for file in files:
                   if file.endswith('.gradle') or file.endswith('.gradle.kts') or file.endswith('.properties'):
@@ -74,20 +86,13 @@ jobs:
                       try:
                           with open(path, 'r', encoding='utf-8', errors='ignore') as f:
                               c = f.read()
-                          
-                          c = c.replace('1.4.31', '1.8.22')
-                          c = c.replace('1.4.20', '1.8.22')
-                          c = c.replace('1.4', '1.8.22')
-                          c = c.replace('1.5', '1.8.22')
-                          c = c.replace('1.6', '1.8.22')
-                          c = c.replace('1.7', '1.8.22')
-                          
+                          c = c.replace('1.4.31', '1.8.22').replace('1.4.20', '1.8.22').replace('1.4', '1.8.22').replace('1.5', '1.8.22').replace('1.6', '1.8.22').replace('1.7', '1.8.22')
                           with open(path, 'w', encoding='utf-8') as f:
                               f.write(c)
-                      except Exception as e:
+                      except:
                           pass
 
-          # 4. AndroidManifest mein App Name, Internet Permission aur AdMob ID set karna
+          # 5. AndroidManifest mein App Name, Internet Permission aur AdMob ID set karna
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           if os.path.exists(manifest_path):
               with open(manifest_path, 'r') as f:
