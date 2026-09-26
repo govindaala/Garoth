@@ -37,67 +37,25 @@ jobs:
           flutter pub add shared_preferences:^2.3.2
           flutter pub add uuid:^4.5.1
 
-      - name: Ultimate Kotlin 1.8.22 & Settings.gradle Fix
+      - name: Configure AndroidManifest (App Name, Internet & AdMob)
         run: |
           python3 << 'EOF'
-          import os, re
+          import os
 
-          # 1. Gradle wrapper properties mein Gradle 7.6.3 set karna
-          gradle_path = 'android/gradle/wrapper/gradle-wrapper.properties'
-          if os.path.exists(gradle_path):
-              with open(gradle_path, 'r') as f:
-                  content = f.read()
-              content = re.sub(r'distributionUrl=.*', 'distributionUrl=https\\://services.gradle.org/distributions/gradle-7.6.3-bin.zip', content)
-              with open(gradle_path, 'w') as f:
-                  f.write(content)
-
-          # 2. settings.gradle mein kotlin version ko explicitly 1.8.22 karna
-          settings_file = 'android/settings.gradle'
-          if os.path.exists(settings_file):
-              with open(settings_file, 'r') as f:
-                  s_data = f.read()
-              s_data = re.sub(r'version\s*[\"\']1\.[0-9](\.[0-9]+)?[\"\']', 'version "1.8.22"', s_data)
-              s_data = s_data.replace('1.4.31', '1.8.22').replace('1.7.10', '1.8.22').replace('1.4', '1.8.22')
-              with open(settings_file, 'w') as f:
-                  f.write(s_data)
-
-          # 3. gradle.properties mein kotlin.version set karna
-          prop_path = 'android/gradle.properties'
-          prop_content = ""
-          if os.path.exists(prop_path):
-              with open(prop_path, 'r') as f:
-                  prop_content = f.read()
-          if 'kotlin.version' not in prop_content:
-              prop_content += "\nkotlin.version=1.8.22\n"
-          else:
-              prop_content = re.sub(r'kotlin.version=.*', 'kotlin.version=1.8.22', prop_content)
-          with open(prop_path, 'w') as f:
-              f.write(prop_content)
-
-          # 4. android/build.gradle ke shuru mein buildscript add karna
-          build_gradle = 'android/build.gradle'
-          if os.path.exists(build_gradle):
-              with open(build_gradle, 'r') as f:
-                  bg_content = f.read()
-              if 'ext.kotlin_version' not in bg_content:
-                  bg_content = "buildscript {\n    ext.kotlin_version = '1.8.22'\n}\n" + bg_content
-              else:
-                  bg_content = re.sub(r'ext\.kotlin_version\s*=\s*[\"\'][^\"\']+[\"\']', "ext.kotlin_version = '1.8.22'", bg_content)
-              with open(build_gradle, 'w') as f:
-                  f.write(bg_content)
-
-          # 5. AndroidManifest mein App Name, Internet aur AdMob ID set karna
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           if os.path.exists(manifest_path):
               with open(manifest_path, 'r') as f:
                   m_content = f.read()
               
+              # App Name set karna
               m_content = m_content.replace('android:label="garoth"', 'android:label="Collector Guideline"')
               m_content = m_content.replace('android:label="guideline_app"', 'android:label="Collector Guideline"')
 
+              # Internet permission add karna
               if 'android.permission.INTERNET' not in m_content:
                   m_content = m_content.replace('<application', '    <uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
               
+              # AdMob App ID add karna
               admob_meta = '''
                   <meta-data
                       android:name="com.google.android.gms.ads.APPLICATION_ID"
