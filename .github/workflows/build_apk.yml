@@ -23,7 +23,7 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android platform files & Bulletproof Kotlin Override
+      - name: Generate Android platform files & Fix Settings Gradle Kotlin Version
         run: |
           cp lib/main.dart main_backup.dart
           flutter create . --platforms=android --org com.app.guideline --project-name garoth
@@ -46,32 +46,20 @@ jobs:
               f.write(content)
           "
 
-          # 2. BULLETPROOF KOTLIN OVERRIDE STRATEGY (Yeh har purane version ko block kar dega)
+          # 2. SETTINGS.GRADLE MEIN KOTLIN PLUGIN VERSION KO 1.8.22 KARNA (Main Fix)
           python3 -c "
-          import os
-          build_gradle = 'android/build.gradle'
-          if os.path.exists(build_gradle):
-              with open(build_gradle, 'r') as f:
-                  content = f.read()
-              
-              force_code = '''
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              configurations.all {
-                  resolutionStrategy.eachDependency { details ->
-                      if (details.requested.group == 'org.jetbrains.kotlin') {
-                          details.useVersion '1.8.22'
-                      }
-                  }
-              }
-          }
-          '''
-              content += force_code
-              with open(build_gradle, 'w') as f:
-                  f.write(content)
+          import os, re
+          settings_path = 'android/settings.gradle'
+          if os.path.exists(settings_path):
+              with open(settings_path, 'r') as f:
+                  c = f.read()
+              # Plugin block ke andar ke purane kotlin version ko 1.8.22 se badal dein
+              c = re.sub(r'id\s*[\"\']org\.jetbrains\.kotlin\.android[\"\']\s*version\s*[\"\'][^\"\']+[\"\']', 'id \"org.jetbrains.kotlin.android\" version \"1.8.22\"', c)
+              c = re.sub(r'version\s*[\"\']1\.[4567]\.[0-9]+[\"\']', 'version \"1.8.22\"', c)
+              c = c.replace('1.4.31', '1.8.22')
+              c = c.replace('1.4', '1.8.22')
+              with open(settings_path, 'w') as f:
+                  f.write(c)
           "
 
           # 3. App Name, Internet Permission aur AdMob App ID set karein
