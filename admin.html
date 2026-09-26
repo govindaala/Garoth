@@ -37,7 +37,7 @@
 <body>
 
 <div class="card">
-  <h1>🏛️ एमपी कलेक्टर गाइडलाइन (16 दरें सुपर अपलोडर)</h1>
+  <h1>🏛️ एमपी कलेक्टर गाइडलाइन (16 दरें सुपर अपलोडर - फिक्सड)</h1>
 
   <label>1. ज़िला चुनें (Select District)</label>
   <select id="districtSelect" onchange="checkCustomDistrict(this.value)">
@@ -95,6 +95,13 @@
 
   function cleanText(str) {
     return (str || '').replace(/[\r\t]+/g, ' ').trim().normalize('NFC');
+  }
+
+  function parseNumber(val) {
+    if (!val || val === "None" || val === "-") return 0;
+    let cleanVal = val.toString().replace(/[₹,]/g, '').trim();
+    let num = parseFloat(cleanVal);
+    return isNaN(num) ? 0 : num;
   }
 
   function handleFile(event) {
@@ -158,10 +165,9 @@
         if (parts.length >= 5 && /^\d+$/.test(parts[0])) {
           let locName = parts[1] || ("वार्ड का शेष भाग (" + parts[0] + ")");
 
-          const nums = [];
+          const rawCols = [];
           for (let j = 2; j < parts.length; j++) {
-            let val = parts[j].replace(/[₹,]/g, '').trim();
-            nums.push(val && val !== "None" ? val : "-");
+            rawCols.push(parts[j]);
           }
 
           cleanRecords.push({
@@ -169,25 +175,25 @@
             tehsil: curTehsil,
             sub_area: curSubArea,
             ward_halka: curWard,
-            village: curSubArea,
-            ward: locName.substring(0, 90),
             location_name: locName.substring(0, 90),
-            plot_residential: nums[0] || "-",
-            plot_commercial: nums[1] || "-",
-            plot_industrial: nums[2] || "-",
-            rcc_residential: nums[3] || "-",
-            pucca_residential: nums[4] || "-",
-            semi_pucca_residential: nums[5] || "-",
-            kachha_residential: nums[6] || "-",
-            shop_rcc: nums[7] || "-",
-            shop_pucca: nums[8] || "-",
-            shop_semi_pucca: nums[9] || "-",
-            multi_residential: nums[10] || "-",
-            multi_commercial: nums[11] || "-",
-            agri_irrigated: nums[12] || "-",
-            agri_unirrigated: nums[13] || "-",
-            extra_rate_1: nums[14] || "-",
-            extra_rate_2: nums[15] || "-"
+            // Numeric fields parsed safely to prevent database crash
+            plot_residential: parseNumber(rawCols[0]),
+            plot_commercial: parseNumber(rawCols[1]),
+            plot_industrial: parseNumber(rawCols[2]),
+            rcc_residential: parseNumber(rawCols[3]),
+            pucca_residential: parseNumber(rawCols[4]),
+            semi_pucca_residential: parseNumber(rawCols[5]),
+            kachha_residential: parseNumber(rawCols[6]),
+            shop_rcc: parseNumber(rawCols[7]),
+            shop_pucca: parseNumber(rawCols[8]),
+            shop_semi_pucca: parseNumber(rawCols[9]),
+            multi_residential: parseNumber(rawCols[10]),
+            multi_commercial: parseNumber(rawCols[11]),
+            agri_irrigated: parseNumber(rawCols[12]),
+            agri_unirrigated: parseNumber(rawCols[13]),
+            // Text fields for extra rates
+            extra_rate_1: rawCols[14] && rawCols[14] !== "None" ? rawCols[14] : "-",
+            extra_rate_2: rawCols[15] && rawCols[15] !== "None" ? rawCols[15] : "-"
           });
         }
       }
@@ -207,23 +213,9 @@
     document.getElementById('status-box').innerHTML = `<span style="color:#22c55e;">✅ कुल ${cleanRecords.length} रिकॉर्ड्स तैयार हैं। तहसीलें मिलीं: ${Array.from(tehsils).join(', ')}</span>`;
   }
 
-  async function safeInsert(chunk) {
-    for (let a = 1; a <= 5; a++) {
-      try {
-        const { error } = await db.from('guidelines').insert(chunk);
-        if (error) throw error;
-        return;
-      } catch (e) {
-        if (a === 5) throw e;
-        await new Promise(r => setTimeout(r, 1200));
-      }
-    }
-  }
-
   async function startUpload() {
     if (cleanRecords.length === 0) return;
 
-    // Keep screen awake on mobile during upload
     try {
       if ('wakeLock' in navigator) await navigator.wakeLock.request('screen');
     } catch (e) {}
@@ -243,27 +235,28 @@
         await db.from('guidelines').delete().eq('district', district);
       }
 
-      const BATCH = 10; // Safe payload size
+      const BATCH = 10;
       const total = cleanRecords.length;
 
       for (let i = uploadIndex; i < total; i += BATCH) {
         uploadIndex = i;
         const chunk = cleanRecords.slice(i, i + BATCH);
-        await db.from('guidelines').insert(chunk); // (या जो भी इंसर्ट करने की लाइन हो)
+        const { error } = await db.from('guidelines').insert(chunk);
+        if (error) throw error;
 
         const done = Math.min(i + BATCH, total);
         const pct = Math.round((done / total) * 100);
         pFill.style.width = pct + '%';
         status.innerHTML = `<span style="color:#38bdf8;">सेव हो रहा है: ${done} / ${total} (${pct}%)...</span>`;
-        await new Promise(r => setTimeout(r, 800));
+        await new Promise(r => setTimeout(r, 400));
       }
 
       uploadIndex = 0;
-      status.innerHTML = `<span style="color:#22c55e; font-size:15px;">🎉 बधाई हो! पूरे ज़िले के सभी ${total} रिकॉर्ड्स Supabase में 100% सेव हो गए!</span>`;
+      status.innerHTML = `<span style="color:#22c55e; font-size:15px;">🎉 बधाई हो! पूरे ज़िले के सभी ${total} रिकॉर्ड्स Supabase में सफलताપूर्वक सेव हो गए!</span>`;
       btn.style.display = 'none';
 
     } catch (err) {
-      status.innerHTML = `<span style="color:#ef4444;">⚠️ नेटवर्क धीमा है। कृपया नीचे हरा बटन दबाकर वहीं से आगे बढ़ाएँ।</span>`;
+      status.innerHTML = `<span style="color:#ef4444;">⚠️ एरर आया: ${err.message || err}. कृपया नीचे हरा बटन दबाकर वहीं से आगे बढ़ाएँ।</span>`;
       btn.disabled = false;
       btn.innerText = "जहाँ रुका था वहीं से आगे बढ़ाएँ (Resume Upload)";
     }
