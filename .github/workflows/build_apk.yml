@@ -23,7 +23,7 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android platform files & Setup App Name, Gradle & AdMob
+      - name: Generate Android platform files & Setup App Name, Gradle, Kotlin & AdMob
         run: |
           cp lib/main.dart main_backup.dart
           flutter create . --platforms=android --org com.app.guideline --project-name garoth
@@ -38,25 +38,42 @@ jobs:
           with open(gradle_path, 'r') as f:
               content = f.read()
           content = content.replace('distributionUrl=', '#distributionUrl=') + '\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-7.6.3-bin.zip\n'
-          with open(gradle_path, 'w') as f:
+          with open(gradle_path, 'w' ) as f:
               f.write(content)
           "
 
-          # 2. App Name, Internet Permission aur AdMob App ID set karne ki script
+          # 2. Kotlin version update karne ki script (Error fix karne ke liye)
+          python3 -c "
+          import os
+          for root, dirs, files in os.walk('android'):
+              for file in files:
+                  if file == 'build.gradle':
+                      path = os.path.join(root, file)
+                      with open(path, 'r') as f:
+                          content = f.read()
+                      if '1.4' in content or 'kotlin' in content:
+                          content = content.replace('1.4.20', '1.8.22')
+                          content = content.replace('1.4.31', '1.8.22')
+                          content = content.replace('1.4.', '1.8.')
+                          with open(path, 'w') as f:
+                              f.write(content)
+          "
+
+          # 3. App Name, Internet Permission aur AdMob App ID set karne ki script
           python3 -c "
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           with open(manifest_path, 'r') as f:
               content = f.read()
           
-          # 👈 Yahan app ka naam phone ke icon ke niche 'Collector Guideline' set ho jayega
+          # App ka naam phone ke icon ke niche 'Collector Guideline' set karne ke liye
           content = content.replace('android:label=\"garoth\"', 'android:label=\"Collector Guideline\"')
           content = content.replace('android:label=\"guideline_app\"', 'android:label=\"Collector Guideline\"')
 
-          # Internet Permission jodein
+          # Internet Permission jodne ke liye
           if 'android.permission.INTERNET' not in content:
               content = content.replace('<application', '    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application')
           
-          # AdMob App ID jodein
+          # AdMob App ID jodne ke liye
           admob_meta = '''
               <meta-data
                   android:name=\"com.google.android.gms.ads.APPLICATION_ID\"
