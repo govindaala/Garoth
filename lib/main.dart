@@ -4,16 +4,26 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // AdMob SDK Initialize karein
-  MobileAds.instance.initialize();
+  // 1. AdMob SDK को सुरक्षित तरीके से इनिशियलाइज करें
+  try {
+    MobileAds.instance.initialize();
+  } catch (e) {
+    debugPrint("AdMob init error: $e");
+  }
 
-  await Supabase.initialize(
-    url: 'https://dcbtdftgjyokioqcpumv.supabase.co',
-    anonKey: 'sb_publishable_u6nxcL145Z-HsaKiOlfjoQ_DCvKJrGO',
-  );
+  // 2. Supabase को सुरक्षित try-catch में रखें ताकि क्रैश न हो
+  try {
+    await Supabase.initialize(
+      url: 'https://dcbtdftgjyokioqcpumv.supabase.co',
+      anonKey: 'sb_publishable_u6nxcL145Z-HsaKiOlfjoQ_DCvKJrGO',
+    );
+  } catch (e) {
+    debugPrint("Supabase init error: $e");
+  }
+
   runApp(const GuidelineApp());
 }
 
@@ -58,9 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<String> locations = [];
 
   Map<String, dynamic>? guidelineData;
-  bool isLoading = true; // 👈 App start hote hi crash na ho isliye true rakha gaya hai
+  bool isLoading = true; // ऐप शुरू होते ही लोडिंग ऑन रहेगी
 
-  // Google AdMob Banner variables
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
   final String _adUnitId = 'ca-app-pub-1190693135801072/8507449433';
@@ -70,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     loadDistricts();
     _loadBannerAd();
-    smartTrackAppOpen(); // 👈 Smart background tracking
+    smartTrackAppOpen();
   }
 
   // Smart & Lightweight Tracking Function
@@ -100,22 +109,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _loadBannerAd() {
-    BannerAd(
-      adUnitId: _adUnitId,
-      request: const AdRequest(),
-      size: AdSize.banner,
-      listener: BannerAdListener(
-        onAdLoaded: (ad) {
-          setState(() {
-            _bannerAd = ad as BannerAd;
-            _isAdLoaded = true;
-          });
-        },
-        onAdFailedToLoad: (ad, err) {
-          ad.dispose();
-        },
-      ),
-    ).load();
+    try {
+      BannerAd(
+        adUnitId: _adUnitId,
+        request: const AdRequest(),
+        size: AdSize.banner,
+        listener: BannerAdListener(
+          onAdLoaded: (ad) {
+            if (!mounted) return;
+            setState(() {
+              _bannerAd = ad as BannerAd;
+              _isAdLoaded = true;
+            });
+          },
+          onAdFailedToLoad: (ad, err) {
+            ad.dispose();
+          },
+        ),
+      ).load();
+    } catch (e) {
+      debugPrint("Ad load error: $e");
+    }
   }
 
   @override
@@ -125,16 +139,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> loadDistricts() async {
-    // 👈 Yahan se setState() hata diya gaya hai taaki mount hone se pehle error na aaye
     try {
       final res = await supabase.rpc('get_districts');
       final list = (res as List)
           .map((e) => e['district'].toString().trim())
           .where((e) => e.isNotEmpty)
           .toList();
+      
+      if (!mounted) return;
       setState(() {
         districts = list;
-        isLoading = false; // 👈 Data milne ke baad loading false hogi
+        isLoading = false;
         if (districts.isNotEmpty) {
           selectedDistrict = districts.contains('मंदसौर') ? 'मंदसौर' : districts.first;
           loadTehsils(selectedDistrict!);
@@ -142,11 +157,13 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (e) {
       debugPrint('Districts load error: $e');
+      if (!mounted) return;
       setState(() => isLoading = false);
     }
   }
 
   Future<void> loadTehsils(String district) async {
+    if (!mounted) return;
     setState(() {
       isLoading = true;
       selectedTehsil = null;
@@ -165,15 +182,18 @@ class _HomeScreenState extends State<HomeScreen> {
           .map((e) => e['tehsil'].toString().trim())
           .where((e) => e.isNotEmpty)
           .toList();
+      
+      if (!mounted) return;
       setState(() => tehsils = list);
     } catch (e) {
       debugPrint('Tehsil error: $e');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   Future<void> loadSubAreas(String tehsil) async {
+    if (!mounted) return;
     setState(() {
       isLoading = true;
       selectedSubArea = null;
@@ -193,15 +213,18 @@ class _HomeScreenState extends State<HomeScreen> {
           .map((e) => e['sub_area'].toString().trim())
           .where((e) => e.isNotEmpty)
           .toList();
+      
+      if (!mounted) return;
       setState(() => subAreas = list);
     } catch (e) {
       debugPrint('SubArea error: $e');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   Future<void> loadWards(String subArea) async {
+    if (!mounted) return;
     setState(() {
       isLoading = true;
       selectedWard = null;
@@ -220,15 +243,18 @@ class _HomeScreenState extends State<HomeScreen> {
           .map((e) => e['ward_halka'].toString().trim())
           .where((e) => e.isNotEmpty)
           .toList();
+      
+      if (!mounted) return;
       setState(() => wards = list);
     } catch (e) {
       debugPrint('Ward error: $e');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   Future<void> loadLocations(String ward) async {
+    if (!mounted) return;
     setState(() {
       isLoading = true;
       selectedLocation = null;
@@ -246,15 +272,18 @@ class _HomeScreenState extends State<HomeScreen> {
           .map((e) => e['location_name'].toString().trim())
           .where((e) => e.isNotEmpty)
           .toList();
+      
+      if (!mounted) return;
       setState(() => locations = list);
     } catch (e) {
       debugPrint('Location error: $e');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   Future<void> loadRateDetails(String loc) async {
+    if (!mounted) return;
     setState(() => isLoading = true);
     try {
       final res = await supabase
@@ -267,11 +296,13 @@ class _HomeScreenState extends State<HomeScreen> {
           .eq('location_name', loc)
           .limit(1)
           .maybeSingle();
+      
+      if (!mounted) return;
       setState(() => guidelineData = res);
     } catch (e) {
       debugPrint('Rate error: $e');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -427,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _box('3. दुकान / व्यावसायिक (₹/वर्ग मी.)', [
             _row('दुकान (RCC)', d['shop_rcc']),
             _row('दुकान (पक्का)', d['shop_pucca']),
-            _row('दुकान (अर्ध-पक्का)', d['shop_semi_pucca']),
+            _row('दुकान (अर्ध-pक्का)', d['shop_semi_pucca']),
           ]),
 
           _box('4. बहुमंजिला परिसर (₹/वर्ग मी.)', [
