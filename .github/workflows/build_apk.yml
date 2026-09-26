@@ -37,7 +37,7 @@ jobs:
           gradle_path = 'android/gradle/wrapper/gradle-wrapper.properties'
           with open(gradle_path, 'r') as f:
               content = f.read()
-          content = content.replace('distributionUrl=', '#distributionUrl=') + '\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-7.5-bin.zip\n'
+          content = content.replace('distributionUrl=', '#distributionUrl=') + '\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-7.6.3-bin.zip\n'
           with open(gradle_path, 'w') as f:
               f.write(content)
           "
