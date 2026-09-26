@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>एमपी कलेक्टर गाइडलाइन - सुपर एडमिन</title>
+  <title>एमपी कलेक्टर गाइडलाइन - सुपरएडमिन</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -37,7 +37,19 @@
 <body>
 
 <div class="card">
-  <h1>🏛️ एमपी कलेक्टर गाइडलाइन (16 दरें सुपर अपलोडर - फिक्सड)</h1>
+  <h1>🏛️ एमपी कलेक्टर गाइडलाइन (सुपर एडमिन डैशबोर्ड)</h1>
+
+  <!-- लाइव ट्रैकिंग स्टैट्स रो -->
+  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
+    <div class="stat-box">
+      <div class="stat-num" id="totalDevices">0</div>
+      <div class="stat-lbl">📱 कुल रजिस्टर्ड डिवाइस (Users)</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="totalAppOpens" style="color: #22c55e;">0</div>
+      <div class="stat-lbl">🚀 कुल ऐप ओपन्स (Tracking)</div>
+    </div>
+  </div>
 
   <label>1. ज़िला चुनें (Select District)</label>
   <select id="districtSelect" onchange="checkCustomDistrict(this.value)">
@@ -83,6 +95,28 @@
 
   let cleanRecords = [];
   let uploadIndex = 0;
+
+  // पेज लोड होते ही ट्रैकिंग आंकड़े लोड करें
+  window.onload = function() {
+    loadTrackingStats();
+  };
+
+  async function loadTrackingStats() {
+    try {
+      const { count: deviceCount, error: err1 } = await db
+        .from('devices')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: openCount, error: err2 } = await db
+        .from('app_opens')
+        .select('*', { count: 'exact', head: true });
+
+      if (!err1) document.getElementById('totalDevices').innerText = deviceCount || 0;
+      if (!err2) document.getElementById('totalAppOpens').innerText = openCount || 0;
+    } catch (e) {
+      console.error('Tracking stats error:', e);
+    }
+  }
 
   function checkCustomDistrict(v) {
     document.getElementById('customDistrict').style.display = (v === 'CUSTOM') ? 'block' : 'none';
@@ -176,7 +210,6 @@
             sub_area: curSubArea,
             ward_halka: curWard,
             location_name: locName.substring(0, 90),
-            // Numeric fields parsed safely to prevent database crash
             plot_residential: parseNumber(rawCols[0]),
             plot_commercial: parseNumber(rawCols[1]),
             plot_industrial: parseNumber(rawCols[2]),
@@ -191,7 +224,6 @@
             multi_commercial: parseNumber(rawCols[11]),
             agri_irrigated: parseNumber(rawCols[12]),
             agri_unirrigated: parseNumber(rawCols[13]),
-            // Text fields for extra rates
             extra_rate_1: rawCols[14] && rawCols[14] !== "None" ? rawCols[14] : "-",
             extra_rate_2: rawCols[15] && rawCols[15] !== "None" ? rawCols[15] : "-"
           });
@@ -254,6 +286,7 @@
       uploadIndex = 0;
       status.innerHTML = `<span style="color:#22c55e; font-size:15px;">🎉 बधाई हो! पूरे ज़िले के सभी ${total} रिकॉर्ड्स Supabase में सफलताપूर्वक सेव हो गए!</span>`;
       btn.style.display = 'none';
+      loadTrackingStats(); // आंकड़े अपडेट करें
 
     } catch (err) {
       status.innerHTML = `<span style="color:#ef4444;">⚠️ एरर आया: ${err.message || err}. कृपया नीचे हरा बटन दबाकर वहीं से आगे बढ़ाएँ।</span>`;
