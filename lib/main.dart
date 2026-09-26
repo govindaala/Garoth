@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Supabase को सुरक्षित try-catch में रखा गया है
+  // 1. AdMob SDK ko surakshit tarike se initialize karein
+  try {
+    MobileAds.instance.initialize();
+  } catch (e) {
+    debugPrint("AdMob init error: $e");
+  }
+
+  // 2. Supabase ko surakshit try-catch me rakhein
   try {
     await Supabase.initialize(
       url: 'https://dcbtdftgjyokioqcpumv.supabase.co',
@@ -45,7 +53,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final supabase = Supabase.instance.client;
+  SupabaseClient get supabase => Supabase.instance.client;
 
   String? selectedDistrict;
   String? selectedTehsil;
@@ -62,13 +70,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? guidelineData;
   bool isLoading = true;
 
+  // Google AdMob Banner variables
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
+  final String _adUnitId = 'ca-app-pub-1190693135801072/8507449433';
+
   @override
   void initState() {
     super.initState();
     loadDistricts();
+    _loadBannerAd();
     smartTrackAppOpen();
   }
 
+  // Smart & Lightweight Tracking Function
   void smartTrackAppOpen() {
     Future.microtask(() async {
       try {
@@ -92,6 +107,36 @@ class _HomeScreenState extends State<HomeScreen> {
         debugPrint('Tracking silent error: $e');
       }
     });
+  }
+
+  void _loadBannerAd() {
+    try {
+      BannerAd(
+        adUnitId: _adUnitId,
+        request: const AdRequest(),
+        size: AdSize.banner,
+        listener: BannerAdListener(
+          onAdLoaded: (ad) {
+            if (!mounted) return;
+            setState(() {
+              _bannerAd = ad as BannerAd;
+              _isAdLoaded = true;
+            });
+          },
+          onAdFailedToLoad: (ad, err) {
+            ad.dispose();
+          },
+        ),
+      ).load();
+    } catch (e) {
+      debugPrint("Ad load error: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
   }
 
   Future<void> loadDistricts() async {
@@ -361,6 +406,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: _isAdLoaded && _bannerAd != null
+          ? Container(
+              alignment: Alignment.center,
+              width: _bannerAd!.size.width.toDouble(),
+              height: _bannerAd!.size.height.toDouble(),
+              child: AdWidget(ad: _bannerAd!),
+            )
+          : null,
     );
   }
 
