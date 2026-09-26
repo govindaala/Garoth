@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 1. AdMob SDK को सुरक्षित तरीके से इनिशियलाइज करें
-  try {
-    MobileAds.instance.initialize();
-  } catch (e) {
-    debugPrint("AdMob init error: $e");
-  }
-
-  // 2. Supabase को सुरक्षित try-catch में रखें ताकि क्रैश न हो
+  // Supabase को सुरक्षित try-catch में रखा गया है
   try {
     await Supabase.initialize(
       url: 'https://dcbtdftgjyokioqcpumv.supabase.co',
@@ -68,21 +60,15 @@ class _HomeScreenState extends State<HomeScreen> {
   List<String> locations = [];
 
   Map<String, dynamic>? guidelineData;
-  bool isLoading = true; // ऐप शुरू होते ही लोडिंग ऑन रहेगी
-
-  BannerAd? _bannerAd;
-  bool _isAdLoaded = false;
-  final String _adUnitId = 'ca-app-pub-1190693135801072/8507449433';
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
     loadDistricts();
-    _loadBannerAd();
     smartTrackAppOpen();
   }
 
-  // Smart & Lightweight Tracking Function
   void smartTrackAppOpen() {
     Future.microtask(() async {
       try {
@@ -106,36 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
         debugPrint('Tracking silent error: $e');
       }
     });
-  }
-
-  void _loadBannerAd() {
-    try {
-      BannerAd(
-        adUnitId: _adUnitId,
-        request: const AdRequest(),
-        size: AdSize.banner,
-        listener: BannerAdListener(
-          onAdLoaded: (ad) {
-            if (!mounted) return;
-            setState(() {
-              _bannerAd = ad as BannerAd;
-              _isAdLoaded = true;
-            });
-          },
-          onAdFailedToLoad: (ad, err) {
-            ad.dispose();
-          },
-        ),
-      ).load();
-    } catch (e) {
-      debugPrint("Ad load error: $e");
-    }
-  }
-
-  @override
-  void dispose() {
-    _bannerAd?.dispose();
-    super.dispose();
   }
 
   Future<void> loadDistricts() async {
@@ -405,14 +361,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _isAdLoaded && _bannerAd != null
-          ? Container(
-              alignment: Alignment.center,
-              width: _bannerAd!.size.width.toDouble(),
-              height: _bannerAd!.size.height.toDouble(),
-              child: AdWidget(ad: _bannerAd!),
-            )
-          : null,
     );
   }
 
@@ -458,7 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _box('3. दुकान / व्यावसायिक (₹/वर्ग मी.)', [
             _row('दुकान (RCC)', d['shop_rcc']),
             _row('दुकान (पक्का)', d['shop_pucca']),
-            _row('दुकान (अर्ध-pक्का)', d['shop_semi_pucca']),
+            _row('दुकान (अर्ध-पक्का)', d['shop_semi_pucca']),
           ]),
 
           _box('4. बहुमंजिला परिसर (₹/वर्ग मी.)', [
