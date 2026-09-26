@@ -23,46 +23,72 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build Setup with Gradle 7.6.3 & AdMob
+      - name: Generate Android platform files & Fix Kotlin & AdMob
         run: |
-          # 1. Dependencies pehle install karein
-          flutter pub get
+          cp lib/main.dart main_backup.dart
+          flutter create . --platforms=android --org com.app.guideline --project-name garoth
+          cp main_backup.dart lib/main.dart
+          rm main_backup.dart
           
-          # 2. Gradle version 7.6.3 set karne ki script
+          # Sabhi zaroori packages add karein
+          flutter pub add supabase_flutter:^2.8.0
+          flutter pub add google_mobile_ads:5.1.0
+          flutter pub add shared_preferences:^2.3.2
+          flutter pub add uuid:^4.5.1
+          
+          # 1. Gradle version 7.6.3 set karne ki script
           python3 -c "
           gradle_path = 'android/gradle/wrapper/gradle-wrapper.properties'
-          if os.path.exists(gradle_path):
-              with open(gradle_path, 'r') as f:
-                  content = f.read()
-              content = content.replace('distributionUrl=', '#distributionUrl=') + '\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-7.6.3-bin.zip\n'
-              with open(gradle_path, 'w') as f:
-                  f.write(content)
+          with open(gradle_path, 'r') as f:
+              content = f.read()
+          content = content.replace('distributionUrl=', '#distributionUrl=') + '\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-7.6.3-bin.zip\n'
+          with open(gradle_path, 'w' ) as f:
+              f.write(content)
           "
 
-          # 3. AndroidManifest mein Internet aur AdMob ID dalna
+          # 2. Kotlin version ko 1.8.22 fix karne ki script (Purane 1.4 error ke liye)
+          python3 -c "
+          import os, re
+          files = ['android/settings.gradle', 'android/build.gradle', 'android/app/build.gradle']
+          for path in files:
+              if os.path.exists(path):
+                  with open(path, 'r') as f:
+                      c = f.read()
+                  c = re.sub(r'version\s*[\"\']1\.[4567]\.[0-9]+[\"\']', 'version \"1.8.22\"', c)
+                  c = c.replace('1.4.31', '1.8.22')
+                  c = c.replace('1.4.20', '1.8.22')
+                  c = c.replace('1.4', '1.8.22')
+                  c = c.replace('1.7', '1.8.22')
+                  with open(path, 'w') as f:
+                      f.write(c)
+          "
+
+          # 3. App Name, Internet Permission aur AdMob App ID set karne ki script
           python3 -c "
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
-          if os.path.exists(manifest_path):
-              with open(manifest_path, 'r') as f:
-                  content = f.read()
-              
-              content = content.replace('android:label=\"garoth\"', 'android:label=\"Collector Guideline\"')
-              content = content.replace('android:label=\"guideline_app\"', 'android:label=\"Collector Guideline\"')
+          with open(manifest_path, 'r') as f:
+              content = f.read()
+          
+          content = content.replace('android:label=\"garoth\"', 'android:label=\"Collector Guideline\"')
+          content = content.replace('android:label=\"guideline_app\"', 'android:label=\"Collector Guideline\"')
 
-              if 'android.permission.INTERNET' not in content:
-                  content = content.replace('<application', '    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application')
-              
-              admob_meta = '''
-                  <meta-data
-                      android:name=\"com.google.android.gms.ads.APPLICATION_ID\"
-                      android:value=\"ca-app-pub-1190693135801072~3753816204\"/>
-              '''
-              if 'com.google.android.gms.ads.APPLICATION_ID' not in content:
-                  content = content.replace('<application', admob_meta + '\n    <application')
+          if 'android.permission.INTERNET' not in content:
+              content = content.replace('<application', '    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application')
+          
+          admob_meta = '''
+              <meta-data
+                  android:name=\"com.google.android.gms.ads.APPLICATION_ID\"
+                  android:value=\"ca-app-pub-1190693135801072~3753816204\"/>
+          '''
+          if 'com.google.android.gms.ads.APPLICATION_ID' not in content:
+              content = content.replace('<application', admob_meta + '\n    <application')
 
-              with open(manifest_path, 'w') as f:
-                  f.write(content)
+          with open(manifest_path, 'w') as f:
+              f.write(content)
           "
+
+      - name: Install dependencies
+        run: flutter pub get
 
       - name: Build Split APKs
         run: flutter build apk --release --split-per-abi
