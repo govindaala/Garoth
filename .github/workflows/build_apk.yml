@@ -42,21 +42,35 @@ jobs:
               f.write(content)
           "
 
-          # 2. Kotlin version update karne ki script (Error fix karne ke liye)
+          # 2. Kotlin version ko aggressive tareeqe se 1.8.22 update karne ki script
           python3 -c "
           import os
           for root, dirs, files in os.walk('android'):
               for file in files:
-                  if file == 'build.gradle':
+                  if file == 'build.gradle' or file == 'settings.gradle':
                       path = os.path.join(root, file)
                       with open(path, 'r') as f:
                           content = f.read()
-                      if '1.4' in content or 'kotlin' in content:
-                          content = content.replace('1.4.20', '1.8.22')
-                          content = content.replace('1.4.31', '1.8.22')
-                          content = content.replace('1.4.', '1.8.')
-                          with open(path, 'w') as f:
-                              f.write(content)
+                      # Sabhi purane kotlin versions ko 1.8.22 se replace karein
+                      content = content.replace('1.4.', '1.8.')
+                      content = content.replace('1.5.', '1.8.')
+                      content = content.replace('1.6.', '1.8.')
+                      content = content.replace('1.7.', '1.8.')
+                      content = content.replace('ext.kotlin_version', 'kotlin_version')
+                      with open(path, 'w') as f:
+                          f.write(content)
+          
+          # Root build.gradle mein agar kotlin_version variable na ho toh force add karengay
+          root_gradle = 'android/build.gradle'
+          if os.path.exists(root_gradle):
+              with open(root_gradle, 'r') as f:
+                  code = f.read()
+              if 'kotlin_version' not in code:
+                  code = 'buildscript { ext.kotlin_version = \"1.8.22\" }\n' + code
+              else:
+                  code = code.replace('1.4', '1.8.22').replace('1.5', '1.8.22').replace('1.6', '1.8.22').replace('1.7', '1.8.22')
+              with open(root_gradle, 'w') as f:
+                  f.write(code)
           "
 
           # 3. App Name, Internet Permission aur AdMob App ID set karne ki script
@@ -65,15 +79,12 @@ jobs:
           with open(manifest_path, 'r') as f:
               content = f.read()
           
-          # App ka naam phone ke icon ke niche 'Collector Guideline' set karne ke liye
           content = content.replace('android:label=\"garoth\"', 'android:label=\"Collector Guideline\"')
           content = content.replace('android:label=\"guideline_app\"', 'android:label=\"Collector Guideline\"')
 
-          # Internet Permission jodne ke liye
           if 'android.permission.INTERNET' not in content:
               content = content.replace('<application', '    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application')
           
-          # AdMob App ID jodne ke liye
           admob_meta = '''
               <meta-data
                   android:name=\"com.google.android.gms.ads.APPLICATION_ID\"
