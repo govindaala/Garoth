@@ -23,7 +23,7 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android platform files & Force Kotlin 1.8 Override
+      - name: Generate Android platform files & Ultimate Gradle & Kotlin Fix
         run: |
           cp lib/main.dart main_backup.dart
           flutter create . --platforms=android --org com.app.guideline --project-name garoth
@@ -42,52 +42,24 @@ jobs:
               f.write(content)
           "
 
-          # 2. gradle.properties mein Kotlin version 1.8.22 set karna
+          # 2. settings.gradle aur build.gradle dono mein Kotlin version ko forcefully 1.8.22 karna
           python3 -c "
-          import os
-          prop_path = 'android/gradle.properties'
-          new_prop = '\nkotlin.version=1.8.22\nandroid.useAndroidX=true\nandroid.enableJetifier=true\n'
-          if os.path.exists(prop_path):
-              with open(prop_path, 'a') as f:
-                  f.write(new_prop)
-          else:
-              with open(prop_path, 'w') as f:
-                  f.write(new_prop)
+          import os, re
+          files = ['android/settings.gradle', 'android/build.gradle', 'android/app/build.gradle']
+          for path in files:
+              if os.path.exists(path):
+                  with open(path, 'r') as f:
+                      c = f.read()
+                  # Regex se kisi bhi purane kotlin version ko 1.8.22 mein badal dein
+                  c = re.sub(r'version\s*[\"\']1\.[0-9]\.[0-9]+[\"\']', 'version \"1.8.22\"', c)
+                  c = re.sub(r'kotlin_version\s*=\s*[\"\']1\.[0-9]\.[0-9]+[\"\']', 'kotlin_version = \"1.8.22\"', c)
+                  c = c.replace('version \"1.4\"', 'version \"1.8.22\"')
+                  c = c.replace('version \"1.7\"', 'version \"1.8.22\"')
+                  with open(path, 'w') as f:
+                      f.write(c)
           "
 
-          # 3. SABHI SUBPROJECTS KE LIYE KOTLIN 1.8 FORCE FIX (Yeh 1.4 error ko jad se khatam karega)
-          python3 -c "
-          import os
-          build_gradle = 'android/build.gradle'
-          if os.path.exists(build_gradle):
-              with open(build_gradle, 'r') as f:
-                  content = f.read()
-              
-              override_code = '''
-          subprojects {
-              afterEvaluate { project ->
-                  if (project.hasProperty(\"android\")) {
-                      project.android {
-                          if (namespace == null) {
-                              namespace project.group
-                          }
-                      }
-                  }
-                  project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                      kotlinOptions {
-                          languageVersion = \"1.8\"
-                          apiVersion = \"1.8\"
-                      }
-                  }
-              }
-          }
-          '''
-              content += override_code
-              with open(build_gradle, 'w') as f:
-                  f.write(content)
-          "
-
-          # 4. App Name, Internet Permission aur AdMob App ID set karne ki script
+          # 3. App Name, Internet Permission aur AdMob App ID set karne ki script
           python3 -c "
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           with open(manifest_path, 'r') as f:
